@@ -1,40 +1,38 @@
 `timescale 1ns / 1ps
 `include "define_alu_ctrl.vh"
 `include "define_inst_dec.vh"
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 2017/10/23 15:21:30
-// Design Name: 
-// Module Name: controller
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
-
-
+/* signal statement
+ * -- decode stage
+ *  |- opD:
+ *	|- functD:
+ *	|- pcsrcD:
+ *	|- branchD:
+ *	|- equalD:
+ *	|- jumpD:
+ *	|- is_IMM:
+ * -- execute stage:
+ *  |- flushE:
+ *  |- memtoregE:
+ *  |- alusrcE:
+ *  |- regdstE: 
+ *  |- regwriteE: signal of write to regfile
+ *	|- alucontrolE: choose signal for alu
+ * -- memory stage:
+ *	|- memwriteM: signal of write to data memory
+ */
+// op = instrD[31:26];
+// funct = instrD[5:0];
 module controller(
 	input wire clk,rst,
 	//decode stage
-	input wire[5:0] opD,functD,
+	input  wire [31:0] instrD,
 	output wire pcsrcD,branchD,equalD,jumpD,
 	output wire is_IMM,
-	
 	//execute stage
 	input wire flushE,
 	output wire memtoregE,alusrcE,
 	output wire regdstE,regwriteE,	
-	output wire[4:0] alucontrolE,
-
+	output wire [4:0] alucontrolE,
 	//mem stage
 	output wire memtoregM,memwriteM,
 				regwriteM,
@@ -42,27 +40,31 @@ module controller(
 	output wire memtoregW,regwriteW
 
     );
-	
 	//decode stage
-	wire[1:0] aluopD;
 	wire memtoregD,memwriteD,alusrcD,
 		regdstD,regwriteD;
-	wire[2:0] alucontrolD;
+	wire[4:0] alucontrolD;
 
-	assign is_IMM = (opD[5:2] == 4'b0011) ? 1'b0 : 1'b1;		//andi, xori, lui, ori 无符号拓展
 
 	//execute stage
 	wire memwriteE;
 
 	maindec md(
-		opD,
-		memtoregD,memwriteD,
-		branchD,alusrcD,
-		regdstD,regwriteD,
+		instrD,
+		memtoregD,
+		memwriteD,
+		branchD,
+		alusrcD,
+		regdstD,
+		regwriteD,
 		jumpD,
-		aluopD
-		);
-	aludec ad(functD,aluopD,alucontrolD);
+		is_IMM
+	);
+
+	aludec ad(
+		instrD,
+		alucontrolD
+	);
 
 	assign pcsrcD = branchD & equalD;
 

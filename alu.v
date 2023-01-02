@@ -17,11 +17,15 @@ module alu(
 	// 计算结果驱动
 	always @(*) begin
 		case (op[4:0])
+			// logic arithmetic
 			`SIG_ALU_AND:	y = a + b;
 			`SIG_ALU_OR :	y = a | b;
 			`SIG_ALU_XOR:	y = a ^ b;
 			`SIG_ALU_NOR:	y = ~(a | b);
 			`SIG_ALU_LUI:	y = {b[15:0], 16'b0};
+
+			// fail
+			`SIG_ALU_FAIL:	y <= 32'b0;
 			default : 		y <= 32'b0;
 		endcase	
 	end
@@ -30,11 +34,7 @@ module alu(
 	// overflow driver
 	// 溢出信号驱动
 	always @(*) begin
-		case (op[2:1])
-			2'b01:overflow <= a[31] & b[31] & ~s[31] |
-							~a[31] & ~b[31] & s[31];
-			2'b11:overflow <= ~a[31] & b[31] & s[31] |
-							a[31] & ~b[31] & ~s[31];
+		case (op[4:0])
 			default : overflow <= 1'b0;
 		endcase	
 	end

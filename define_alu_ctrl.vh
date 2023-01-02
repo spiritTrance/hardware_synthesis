@@ -9,3 +9,6 @@
 `define SIG_ALU_XOR     5'b00_010
 `define SIG_ALU_NOR     5'b00_011
 `define SIG_ALU_LUI     5'b00_100
+
+// fail
+`define SIG_ALU_FAIL    5'b11_111

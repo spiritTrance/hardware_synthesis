@@ -1,24 +1,4 @@
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 2017/11/02 15:12:22
-// Design Name: 
-// Module Name: datapath
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
-
 
 module datapath(
 	input 	wire 			clk,rst,
@@ -29,7 +9,7 @@ module datapath(
 	input 	wire 			pcsrcD,branchD,
 	input 	wire 			jumpD,
 	output 	wire 			equalD,
-	output 	wire	[5:0] 	opD,functD,
+	output 	wire	[31:0] 	instrD,
 	input 	wire 			is_IMM,
 	//execute stage
 	input 	wire	 		memtoregE,
@@ -52,7 +32,7 @@ module datapath(
 	//FD
 	wire [31:0] pcnextFD,pcnextbrFD,pcplus4F,pcbranchD;
 	//decode stage
-	wire [31:0] pcplus4D,instrD;
+	wire [31:0] pcplus4D;
 	wire forwardaD,forwardbD;
 	wire [4:0] rsD,rtD,rdD;
 	wire flushD,stallD; 
@@ -100,10 +80,12 @@ module datapath(
 	mux2 		#(32) 	pcbrmux(pcplus4F, pcbranchD, pcsrcD, pcnextbrFD);
 	mux2 		#(32) 	pcmux(pcnextbrFD, { pcplus4D[31: 28], instrD[25: 0], 2'b00 }, jumpD, pcnextFD);
 
-	//regfile (operates in decode and writeback)
+	// regfile (operates in decode and writeback)
 	regfile rf(clk, regwriteW, rsD, rtD, writeregW, resultW, srcaD, srcbD);
-
-	//fetch stage logic
+	// RF - regwriteW is write signal
+	// RF - writeregW is address of register
+	// RF - resultW is number to write in regFile
+	// fetch stage logic
 	pc 			#(32) 	pcreg(clk,rst,~stallF,pcnextFD,pcF);
 	adder 				pcadd1(pcF,32'b100,pcplus4F);
 	//decode stage
@@ -116,8 +98,7 @@ module datapath(
 	mux2 		#(32) 	forwardbmux	(srcbD, aluoutM, forwardbD, srcb2D);
 	eqcmp 				comp		(srca2D, srcb2D, equalD);
 
-	assign opD = instrD[31:26];
-	assign functD = instrD[5:0];
+
 	assign rsD = instrD[25:21];
 	assign rtD = instrD[20:16];
 	assign rdD = instrD[15:11];
