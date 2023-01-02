@@ -5,41 +5,26 @@ module datapath(
 	//fetch stage
 	output 	wire	[31:0] 	pcF,
 	input 	wire	[31:0] 	instrF,
-	//decode stage
-	input 	wire 			pcsrcD,branchD,
-	input 	wire 			jumpD,
-	output 	wire 			equalD,
-	output 	wire	[31:0] 	instrD,
-	input 	wire 			is_IMM,
-	//execute stage
-	input 	wire	 		memtoregE,
-	input 	wire	 		alusrcE,regdstE,
-	input 	wire	 		regwriteE,
-	input 	wire	[4:0] 	alucontrolE,
-	output 	wire	 		flushE,
 	//mem stage
-	input 	wire 			memtoregM,
-	input 	wire 			regwriteM,
+	output 	wire			memwriteM,
 	output 	wire	[31:0] 	aluoutM,writedataM,
-	input 	wire	[31:0] 	readdataM,
-	//writeback stage
-	input 	wire 			memtoregW,
-	input 	wire 			regwriteW
-    );
-	
-	//fetch stage
+	input 	wire	[31:0] 	readdataM
+);
+	// defination
+		// - fetch stage
 	wire stallF;
-	//FD
-	wire [31:0] pcnextFD,pcnextbrFD,pcplus4F,pcbranchD;
-	//decode stage
+		// - FD
+	wire [31:0] pcnextFD,pcnextbrFD,pcplus4F,pcbranchD,instrD;
+		// - decode stage
 	wire [31:0] pcplus4D;
-	wire forwardaD,forwardbD;
-	wire [4:0] rsD,rtD,rdD;
-	wire flushD,stallD; 
+	wire forwardaD, forwardbD;
+	wire [4:0] rsD, rtD, rdD;
+	wire flushD, stallD; 
 	wire [31:0] signimmD,signimmshD;
 	wire [31:0] srcaD,srca2D,srcbD,srcb2D;
 	wire [4:0] 	saD;
-	//execute stage
+	wire pcsrcD, branchD, jumpD, equalD, is_IMM;
+		// - execute stage
 	wire [1:0] 	forwardaE,forwardbE;
 	wire [4:0] 	rsE,rtE,rdE;
 	wire [4:0] 	writeregE;
@@ -47,11 +32,38 @@ module datapath(
 	wire [31:0] srcaE,srca2E,srcbE,srcb2E,srcb3E;
 	wire [31:0] aluoutE;
 	wire [4:0] 	saE;
-	//mem stage
-	wire [4:0] writeregM;
-	//writeback stage
+	wire [63:0]	alu_HILO;
+	wire memtoregE, alusrcE, regdstE, regwriteE, flushE;
+	wire [4:0]	alucontrolE;
+		// - mem stage
+	wire [4:0] 	writeregM;
+	wire 		hilo_weM;
+	wire [31:0] hi_oM, lo_oM;
+	wire [31:0] hi_i,  lo_i;
+	wire 		memtoregM, regwriteM;
+		// - writeback stage
 	wire [4:0] writeregW;
 	wire [31:0] aluoutW,readdataW,resultW;
+	wire memtoregW, regwriteW;
+
+	// control module
+	controller c(
+		clk,rst,
+		//decode stage
+		instrD,
+		pcsrcD,branchD,equalD,jumpD,
+		is_IMM,
+		//execute stage
+		flushE,
+		memtoregE,alusrcE,
+		regdstE,regwriteE,	
+		alucontrolE,
+		//mem stage
+		memtoregM,memwriteM,
+		regwriteM,
+		//write back stage
+		memtoregW,regwriteW
+	);
 
 	//hazard detection
 	hazard h(
@@ -119,13 +131,19 @@ module datapath(
 	mux3 		#(32) 	forwardaemux(srcaE, resultW, aluoutM, forwardaE, srca2E);
 	mux3 		#(32) 	forwardbemux(srcbE, resultW, aluoutM, forwardbE, srcb2E);
 	mux2 		#(32) 	srcbmux(srcb2E, signimmE, alusrcE, srcb3E);
-	alu 				alu(srca2E, srcb3E, alucontrolE, aluoutE, saE);
+	alu 				alu(srca2E, srcb3E, alucontrolE, aluoutE, saE, alu_HILO);
 	mux2 		#(5) 	wrmux(rtE, rdE, regdstE, writeregE);
 
 	//mem stage
+
+	assign {hi_i, lo_i} = aluoutM;			// HI, LO concatenate
+
 	flopr 		#(32) 	r1M(clk, rst, srcb2E, writedataM);
 	flopr 		#(32) 	r2M(clk, rst, aluoutE, aluoutM);
 	flopr 		#(5) 	r3M(clk, rst, writeregE, writeregM);
+	hilo_reg 			hiloReg(clk, rst, we, hi_i, lo_i, hi_oM, lo_oM);
+
+	assign alu_HILO = {hi_oM, lo_oM};
 
 	//writeback stage
 	flopr 		#(32) 	r1W(clk, rst, aluoutM, aluoutW);
