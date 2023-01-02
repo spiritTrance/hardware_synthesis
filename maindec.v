@@ -18,11 +18,13 @@ module maindec(
 	assign {regwrite, regdst, alusrc, branch, memwrite, memtoreg, jump} = controls;
 	always @(*) begin
 		case (op)
+			// logic arithmetic
 			`OP_RTYPE	:	controls <= 7'b1100000;	//R-TYRE
 			`OP_ANDI	:	controls <= 7'b1010000;
 			`OP_XORI	:	controls <= 7'b1010000;
 			`OP_LUI		:	controls <= 7'b1010000;
 			`OP_ORI		:	controls <= 7'b1010000;
+			// shift arithmetic
 			6'b100011	:	controls <= 7'b1010010;	//LW
 			6'b101011	:	controls <= 7'b0010100;	//SW
 			6'b000100	:	controls <= 7'b0001000;	//BEQ
@@ -31,5 +33,5 @@ module maindec(
 			default		:  	controls <= 7'b0000000;	//illegal op
 		endcase
 	end
-	assign is_IMM = (op[5:2] == 4'b0011) ? 1'b0 : 1'b1;		//andi, xori, lui, ori 无符号拓展
+	assign is_IMM = (op[5:2] == 4'b0011) ? 1'b1 : 1'b0;		//andi, xori, lui, ori 无符号拓展
 endmodule

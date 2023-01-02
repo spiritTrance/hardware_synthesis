@@ -18,12 +18,11 @@ module alu(
 	always @(*) begin
 		case (op[4:0])
 			// logic arithmetic
-			`SIG_ALU_AND:	y = a + b;
+			`SIG_ALU_AND:	y = a & b;
 			`SIG_ALU_OR :	y = a | b;
 			`SIG_ALU_XOR:	y = a ^ b;
 			`SIG_ALU_NOR:	y = ~(a | b);
 			`SIG_ALU_LUI:	y = {b[15:0], 16'b0};
-
 			// fail
 			`SIG_ALU_FAIL:	y <= 32'b0;
 			default : 		y <= 32'b0;
