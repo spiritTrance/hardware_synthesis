@@ -13,10 +13,17 @@ module aludec(
 			// R-type
 			case(funct)
 				// logic arithmetic
-				`FUNC_AND:	alucontrol = `SIG_ALU_AND;
-				`FUNC_OR:	alucontrol = `SIG_ALU_OR ;
-				`FUNC_XOR:	alucontrol = `SIG_ALU_XOR;
-				`FUNC_NOR:	alucontrol = `SIG_ALU_NOR;
+				`FUNC_AND:	alucontrol = `SIG_ALU_AND ;
+				`FUNC_OR:	alucontrol = `SIG_ALU_OR  ;
+				`FUNC_XOR:	alucontrol = `SIG_ALU_XOR ;
+				`FUNC_NOR:	alucontrol = `SIG_ALU_NOR ;
+				// shift arithmetic
+				`FUNC_SLL:	alucontrol = `SIG_ALU_SLL ;
+				`FUNC_SRL :	alucontrol = `SIG_ALU_SRL ;
+				`FUNC_SRA :	alucontrol = `SIG_ALU_SRA ;
+				`FUNC_SLLV:	alucontrol = `SIG_ALU_SLLV;
+				`FUNC_SRLV:	alucontrol = `SIG_ALU_SRLV;
+				`FUNC_SRAV:	alucontrol = `SIG_ALU_SRAV;
 				default:	alucontrol = `SIG_ALU_FAIL;
 			endcase
 		end

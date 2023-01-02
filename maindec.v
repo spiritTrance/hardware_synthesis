@@ -25,6 +25,8 @@ module maindec(
 			`OP_LUI		:	controls <= 7'b1010000;
 			`OP_ORI		:	controls <= 7'b1010000;
 			// shift arithmetic
+				// For all shift instruction are R-type, so the control signal is omitted as OP_RTYPE
+			// misc
 			6'b100011	:	controls <= 7'b1010010;	//LW
 			6'b101011	:	controls <= 7'b0010100;	//SW
 			6'b000100	:	controls <= 7'b0001000;	//BEQ
