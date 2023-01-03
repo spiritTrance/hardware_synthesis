@@ -155,7 +155,7 @@ module datapath(
 
 	//mem stage
 	// TODO: hiloreg clk, M signal or E signal? I think it's E signal instead of M signal, the mux is moved to E stage.
-	assign hilo_we = HILO_enE & {2{is_dataMovWriteE}};
+	assign hilo_we = HILO_enE & {2{is_dataMovWriteE}};	// 这里可能会加stallM的信号，注意下
 
 	hilo_reg 			hiloReg(clk, rst, hilo_we, hi_i, lo_i, hi_oM, lo_oM);
 
