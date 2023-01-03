@@ -48,4 +48,7 @@ module alu(
 			default : overflow <= 1'b0;
 		endcase	
 	end
+
+	// HILO
+	assign HILO = 64'b0;
 endmodule

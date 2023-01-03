@@ -2,10 +2,10 @@
  * this header defines the macro of opcode and funct segment of instructions
  * 这一个文件头定义指令的opcode和funct字段的宏 
  */
+`define OP_RTYPE     6'b00_0000
 
 // logic instruction (LOG)
 // LOG - opcode
-`define OP_RTYPE     6'b00_0000
 `define	OP_AND	        6'b00_0000
 `define	OP_OR	        6'b00_0000
 `define OP_XOR	        6'b00_0000
@@ -35,6 +35,18 @@
 `define FUNC_SLLV   6'b00_0100 
 `define FUNC_SRLV   6'b00_0110 
 `define FUNC_SRAV   6'b00_0111 
+
+// data move instruction (MOV)
+// MOV - opcode
+`define OP_MFHI     6'b00_0000
+`define OP_MFLO     6'b00_0000
+`define OP_MTHI     6'b00_0000
+`define OP_MTLO     6'b00_0000
+// MOV - funct
+`define FUNC_MFHI     6'b010000
+`define FUNC_MFLO     6'b010010
+`define FUNC_MTHI     6'b010001
+`define FUNC_MTLO     6'b010011
 
 // trap instruction (TRAP)
 // TRAP - opcode

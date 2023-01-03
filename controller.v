@@ -23,31 +23,31 @@
 // op = instrD[31:26];
 // funct = instrD[5:0];
 module controller(
-	input wire clk,rst,
+	input 	wire 			clk, rst,
 	//decode stage
-	input  wire [31:0] instrD,
-	output wire pcsrcD,branchD,equalD,jumpD,
-	output wire is_IMM,
+	input  	wire 	[31:0] 	instrD,
+	output 	wire 			pcsrcD, branchD, equalD, jumpD,
+	output 	wire 			is_IMM,
+	output 	wire 	[1: 0]	HILO_enD,
+	output 	wire 			is_dataMovWriteD,	
+	output 	wire 			is_dataMovReadD,	
 	//execute stage
-	input wire flushE,
-	output wire memtoregE,alusrcE,
-	output wire regdstE,regwriteE,	
-	output wire [4:0] alucontrolE,
+	input 	wire 			flushE,
+	output 	wire 			memtoregE, alusrcE,
+	output 	wire 			regdstE, regwriteE,	
+	output 	wire 	[4:0] 	alucontrolE,
 	//mem stage
-	output wire memtoregM,memwriteM,
-				regwriteM,
+	output 	wire 			memtoregM, memwriteM,
+							regwriteM,
 	//write back stage
-	output wire memtoregW,regwriteW
-
-    );
+	output 	wire 			memtoregW, regwriteW
+);
 	//decode stage
-	wire memtoregD,memwriteD,alusrcD,
-		regdstD,regwriteD;
-	wire[4:0] alucontrolD;
-
-
+	wire 			memtoregD, memwriteD, alusrcD,
+					regdstD, regwriteD;
+	wire	[4:0] 	alucontrolD;
 	//execute stage
-	wire memwriteE;
+	wire 			memwriteE;
 
 	maindec md(
 		instrD,
@@ -58,7 +58,10 @@ module controller(
 		regdstD,
 		regwriteD,
 		jumpD,
-		is_IMM
+		is_IMM,
+		HILO_enD,
+		is_dataMovWriteD,
+		is_dataMovReadD
 	);
 
 	aludec ad(
