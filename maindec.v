@@ -13,11 +13,12 @@ module maindec(
 	output 	wire 			is_IMM,			// decode stage:	 signal of immediately operator. 0: no; 1: yes
 	output  wire	[1: 0]	HILO_en,		// decode stage:	 hilo enable signal. HILO_we[1] for hi and [0] for lo
 	output  wire			is_dataMovWrite,		// decode stage:	 whether is data move inst. 1: yes; 0: no
-	output  wire			is_dataMovRead		// decode stage:	 whether is data move inst. 1: yes; 0: no
+	output  wire			is_dataMovRead,		// decode stage:	 whether is data move inst. 1: yes; 0: no
+	output  wire			isMulOrDiv		//decode stage:	whether is mul or div inst.
 );
 	reg		[6:0] 	controls;
 	wire 	[5:0] 	op, funct;
-	wire			isMulOrDiv, is_dataMov;
+	wire			is_dataMov;
 	wire			operateHI, operateLO, readHILO, writeHILO;
 	assign op = instr[31:26];
 	assign funct = instr[5:0];
@@ -27,22 +28,39 @@ module maindec(
 			// logic arithmetic instruction
 			`OP_RTYPE	:		//R-TYRE
 				case (funct)
+					// logic
 					`FUNC_AND	:	controls <= 7'b1100000;
 					`FUNC_OR	:	controls <= 7'b1100000;
 					`FUNC_XOR	:	controls <= 7'b1100000;
 					`FUNC_NOR	:	controls <= 7'b1100000;
+					// shift
 					`FUNC_SLL 	:	controls <= 7'b1100000;
 					`FUNC_SRL 	:	controls <= 7'b1100000;
 					`FUNC_SRA 	:	controls <= 7'b1100000;
 					`FUNC_SLLV	:	controls <= 7'b1100000;
 					`FUNC_SRLV	:	controls <= 7'b1100000;
 					`FUNC_SRAV	:	controls <= 7'b1100000;
+					// data move
 					`FUNC_MFHI	:	controls <= 7'b1100000;
 					`FUNC_MFLO	:	controls <= 7'b1100000;
-					`FUNC_MTHI	:	controls <= 7'b1000000;
-					`FUNC_MTLO	:	controls <= 7'b1000000;
+					`FUNC_MTHI	:	controls <= 7'b0000000;
+					`FUNC_MTLO	:	controls <= 7'b0000000;
+					// arithmetic
+					`FUNC_ADD  	:	controls <= 7'b1100000;
+					`FUNC_ADDU 	:	controls <= 7'b1100000;
+					`FUNC_SUB  	:	controls <= 7'b1100000;
+					`FUNC_SUBU 	:	controls <= 7'b1100000;
+					`FUNC_SLT  	:	controls <= 7'b1100000;
+					`FUNC_SLTU 	:	controls <= 7'b1100000;
+					// 存疑，等会看看
+					`FUNC_MULT 	:	controls <= 7'b0000000;
+					`FUNC_MULTU	:	controls <= 7'b0000000;
+					`FUNC_DIV  	:	controls <= 7'b0000000;
+					`FUNC_DIVU 	:	controls <= 7'b0000000;
 					default:		controls <= 7'b0000000;
 				endcase
+			// I-type 
+			// --- logic
 			`OP_ANDI	:	controls <= 7'b1010000;
 			`OP_XORI	:	controls <= 7'b1010000;
 			`OP_LUI		:	controls <= 7'b1010000;
@@ -51,6 +69,11 @@ module maindec(
 				// For all shift instruction are R-type, so the control signal is omitted as OP_RTYPE
 			// data move instruction
 				// For all shift instruction are R-type, so the control signal is omitted as OP_RTYPE
+			// --- arithmetic
+    		`OP_ADDI    : 	controls <= 7'b1010000;
+    		`OP_ADDIU   : 	controls <= 7'b1010000;
+    		`OP_SLTI    : 	controls <= 7'b1010000;
+    		`OP_SLTIU   : 	controls <= 7'b1010000;
 			// misc
 			6'b100011	:	controls <= 7'b1010010;	//LW
 			6'b101011	:	controls <= 7'b0010100;	//SW

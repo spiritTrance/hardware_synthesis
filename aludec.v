@@ -12,29 +12,51 @@ module aludec(
 		if (op == `OP_RTYPE) begin		
 			// R-type
 			case(funct)
-				// logic arithmetic
-				`FUNC_AND:	alucontrol = `SIG_ALU_AND ;
-				`FUNC_OR:	alucontrol = `SIG_ALU_OR  ;
-				`FUNC_XOR:	alucontrol = `SIG_ALU_XOR ;
-				`FUNC_NOR:	alucontrol = `SIG_ALU_NOR ;
-				// shift arithmetic
-				`FUNC_SLL:	alucontrol = `SIG_ALU_SLL ;
-				`FUNC_SRL :	alucontrol = `SIG_ALU_SRL ;
-				`FUNC_SRA :	alucontrol = `SIG_ALU_SRA ;
-				`FUNC_SLLV:	alucontrol = `SIG_ALU_SLLV;
-				`FUNC_SRLV:	alucontrol = `SIG_ALU_SRLV;
-				`FUNC_SRAV:	alucontrol = `SIG_ALU_SRAV;
-				default:	alucontrol = `SIG_ALU_FAIL;
+				// trap
+				`FUNCT_BREAK:  		alucontrol = `SIG_ALU_FAIL;
+				`FUNCT_SYSCALL:		alucontrol = `SIG_ALU_FAIL;
+				// logic
+				`FUNC_AND:	alucontrol = `SIG_ALU_AND 	;
+				`FUNC_OR:	alucontrol = `SIG_ALU_OR  	;
+				`FUNC_XOR:	alucontrol = `SIG_ALU_XOR 	;
+				`FUNC_NOR:	alucontrol = `SIG_ALU_NOR 	;
+				// shift
+				`FUNC_SLL:	alucontrol = `SIG_ALU_SLL 	;
+				`FUNC_SRL :	alucontrol = `SIG_ALU_SRL 	;
+				`FUNC_SRA :	alucontrol = `SIG_ALU_SRA 	;
+				`FUNC_SLLV:	alucontrol = `SIG_ALU_SLLV	;
+				`FUNC_SRLV:	alucontrol = `SIG_ALU_SRLV	;
+				`FUNC_SRAV:	alucontrol = `SIG_ALU_SRAV	;
+				// data move	
+				`FUNC_MFHI:	alucontrol = `SIG_ALU_MFHI	;
+				`FUNC_MFLO:	alucontrol = `SIG_ALU_MFLO	;
+				// arithmetic
+				`FUNC_ADD  :alucontrol = `SIG_ALU_ADD  	;
+				`FUNC_ADDU :alucontrol = `SIG_ALU_ADDU 	;
+				`FUNC_SUB  :alucontrol = `SIG_ALU_SUB  	;
+				`FUNC_SUBU :alucontrol = `SIG_ALU_SUBU 	;
+				`FUNC_SLT  :alucontrol = `SIG_ALU_SLT  	;
+				`FUNC_SLTU :alucontrol = `SIG_ALU_SLTU 	;
+				`FUNC_MULT :alucontrol = `SIG_ALU_MULT 	;
+				`FUNC_MULTU:alucontrol = `SIG_ALU_MULTU	;
+				`FUNC_DIV  :alucontrol = `SIG_ALU_DIV  	;
+				`FUNC_DIVU :alucontrol = `SIG_ALU_DIVU 	;
+				default	   :alucontrol = `SIG_ALU_FAIL 	;
 			endcase
 		end
 		else begin	
 			//I-type
 			case (op)
-				// logic arithmetic
+				// logic
 				`OP_ANDI:	alucontrol = `SIG_ALU_AND;
 				`OP_XORI:	alucontrol = `SIG_ALU_XOR;
 				`OP_LUI:	alucontrol = `SIG_ALU_LUI;
 				`OP_ORI:	alucontrol = `SIG_ALU_OR;
+				// arithmetic
+				`OP_ADDI :	alucontrol = `SIG_ALU_ADD;
+				`OP_ADDIU:	alucontrol = `SIG_ALU_ADDU;
+				`OP_SLTI :	alucontrol = `SIG_ALU_SLT;
+				`OP_SLTIU:	alucontrol = `SIG_ALU_SLTU;
 				default:	alucontrol = `SIG_ALU_FAIL; 
 			endcase
 		end

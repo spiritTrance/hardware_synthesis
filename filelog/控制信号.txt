@@ -18,8 +18,8 @@
 | srav rd, rt, rs         | 1100000                                                      |
 | MFHI rd                 | 1100000                                                      |
 | MFLO rd                 | 1100000                                                      |
-| MTHI rs                 | 1000000                                                      |
-| MTLO rs                 | 1000000                                                      |
+| MTHI rs                 | 0000000                                                      |
+| MTLO rs                 | 0000000                                                      |
 | ADD rd, rs, rt          | 1100000                                                      |
 | ADDU rd, rs, rt         | 1100000                                                      |
 | ADDI rt, rs, immediate  | 1010000                                                      |
@@ -30,10 +30,10 @@
 | SLTU rd, rs, rt         | 1100000                                                      |
 | SLTI rt, rs, immediate  | 1010000                                                      |
 | SLTIU rt, rs, immediate | 1010000                                                      |
-| DIV rs, rt              | 1000000                                                      |
-| DIVU rs,rt              | 1000000                                                      |
-| MULT rs, it             | 1000000                                                      |
-| MULTU rs, rt            | 1000000                                                      |
+| DIV rs, rt              | 0000000                                                      |
+| DIVU rs,rt              | 0000000                                                      |
+| MULT rs, it             | 0000000                                                      |
+| MULTU rs, rt            | 0000000                                                      |
 | BEQ rs, rt, offset      | 0001000                                                      |
 | BNE rs, rt, offset      | 0001000                                                      |
 | BGEZ rs, offset         | 0001000                                                      |

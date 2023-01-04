@@ -12,16 +12,19 @@ module hazard(
 	input wire[4:0] writeregE,
 	input wire regwriteE,
 	input wire memtoregE,
+	input wire isMulOrDivComputingE,
 	output reg[1:0] forwardaE,forwardbE,
 	output wire flushE,
+	output wire stallE,
 	//mem stage
 	input wire[4:0] writeregM,
 	input wire regwriteM,
 	input wire memtoregM,
-
+	output wire stallM,
 	//write back stage
 	input wire[4:0] writeregW,
-	input wire regwriteW
+	input wire regwriteW,
+	output wire stallW
     );
 
 	wire lwstallD,branchstallD;
@@ -58,16 +61,19 @@ module hazard(
 	end
 
 	//stalls
-	assign #1 lwstallD = memtoregE & (rtE == rsD | rtE == rtD);
-	assign #1 branchstallD = branchD &
-				(regwriteE & 
-				(writeregE == rsD | writeregE == rtD) |
-				memtoregM &
-				(writeregM == rsD | writeregM == rtD));
-	assign #1 stallD = lwstallD | branchstallD;
-	assign #1 stallF = stallD;
+	assign lwstallD = memtoregE & (rtE == rsD | rtE == rtD);
+	assign branchstallD = branchD &
+			(regwriteE & 
+			(writeregE == rsD | writeregE == rtD) |
+			memtoregM &
+			(writeregM == rsD | writeregM == rtD));
+	assign stallD = lwstallD | branchstallD | isMulOrDivComputingE;
+	assign stallF = stallD;
+	assign stallE = stallD;
+	assign stallM = stallD;
+	assign stallW = stallD;
 		//stalling D stalls all previous stages
-	assign #1 flushE = stallD;
+	assign #1 flushE = stallD & ~isMulOrDivComputingE;
 		//stalling D flushes next stage
 	// Note: not necessary to stall D stage on store
   	//       if source comes from load;

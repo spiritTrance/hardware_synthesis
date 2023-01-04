@@ -30,16 +30,20 @@ module controller(
 	output 	wire 			is_IMM,
 	output 	wire 	[1: 0]	HILO_enD,
 	output 	wire 			is_dataMovWriteD,	
-	output 	wire 			is_dataMovReadD,	
+	output 	wire 			is_dataMovReadD,
+	output  wire 			isMulOrDivD,	
 	//execute stage
+	input 	wire 			stallE,
 	input 	wire 			flushE,
 	output 	wire 			memtoregE, alusrcE,
 	output 	wire 			regdstE, regwriteE,	
 	output 	wire 	[4:0] 	alucontrolE,
 	//mem stage
+	input 	wire 			stallM,
 	output 	wire 			memtoregM, memwriteM,
 							regwriteM,
 	//write back stage
+	input 	wire 			stallW,
 	output 	wire 			memtoregW, regwriteW
 );
 	//decode stage
@@ -61,7 +65,8 @@ module controller(
 		is_IMM,
 		HILO_enD,
 		is_dataMovWriteD,
-		is_dataMovReadD
+		is_dataMovReadD,
+		isMulOrDivD
 	);
 
 	aludec ad(
@@ -72,20 +77,27 @@ module controller(
 	assign pcsrcD = branchD & equalD;
 
 	//pipeline registers
-	floprc #(10) regE(
+	flopenrc #(10) regE(
 		clk,
 		rst,
+		~stallE,
 		flushE,
 		{memtoregD,memwriteD,alusrcD,regdstD,regwriteD,alucontrolD},
 		{memtoregE,memwriteE,alusrcE,regdstE,regwriteE,alucontrolE}
 	);
-	flopr #(8) regM(
-		clk,rst,
+	flopenrc #(8) regM(
+		clk,
+		rst,
+		~stallM,
+		1'b0,
 		{memtoregE,memwriteE,regwriteE},
 		{memtoregM,memwriteM,regwriteM}
 	);
-	flopr #(8) regW(
-		clk,rst,
+	flopenrc #(8) regW(
+		clk,
+		rst,
+		~stallW,
+		1'b0,
 		{memtoregM,regwriteM},
 		{memtoregW,regwriteW}
 	);
