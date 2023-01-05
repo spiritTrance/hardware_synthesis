@@ -1,0 +1,13 @@
+`define SIG_B_BEQ       4'b0000
+`define SIG_B_BNE       4'b0001
+`define SIG_B_BGEZ      4'b0010
+`define SIG_B_BGTZ      4'b0011
+`define SIG_B_BLEZ      4'b0100
+`define SIG_B_BLTZ      4'b0101
+`define SIG_B_BLTZAL    4'b0110
+`define SIG_B_BGEZAL    4'b0111
+`define SIG_J_J         4'b1000
+`define SIG_J_JAL       4'b1001
+`define SIG_J_JR        4'b1010
+`define SIG_J_JALR      4'b1011
+`define SIG_BJ_FAIL     4'b1111

@@ -43,7 +43,7 @@
 | BLTZAL rs, offset       | 1001000                                                      |
 | BGEZAL rs, offset       | 1001000                                                      |
 | J target                | 0000001                                                      |
-| JAL target              | 1000000                                                      |
+| JAL target              | 1000000   ?                                                   |
 | JR rs                   | 0000001                                                      |
 | JALR rd, rs             | 1100001                                                      |
 | LB rt, offset(base)     | 1010010                                                      |

@@ -76,6 +76,24 @@
     `define FUNC_DIV      6'b011010
     `define FUNC_DIVU     6'b011011
 
+// branch and jump instruction (BJ)
+    // BJ - opcode
+    `define OP_JR       6'b000000
+    `define OP_JALR     6'b000000
+    `define OP_J        6'b000010
+    `define OP_JAL      6'b000011
+    `define OP_BEQ      6'b000100
+    `define OP_BGTZ     6'b000111
+    `define OP_BLEZ     6'b000110
+    `define OP_BNE      6'b000101
+    `define OP_BLTZ     6'b000001
+    `define OP_BLTZAL   6'b000001
+    `define OP_BGEZ     6'b000001
+    `define OP_BGEZAL   6'b000001
+    // BJ - funct
+    `define FUNC_JR     6'b001000
+    `define FUNC_JALR   6'b001001
+    
 // trap instruction (TRAP)
     // TRAP - opcode
     `define OP_BREAK    6'b00_0000

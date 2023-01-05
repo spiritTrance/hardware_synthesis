@@ -66,9 +66,9 @@ module mul(
     // 最终结果
     assign result = (sign_a ^ sign_b) ? (~abs_result + 1) : abs_result;
     assign data_ok = state == STAGE2;
-/* 波形图
- * en           _-___
- * state        II12I
- * data_ok      ___-_
- */
+    /* 波形图
+    * en           _ - _ _ _
+    * state        I I 1 2 I
+    * data_ok      _ _ _ - _
+    */
 endmodule

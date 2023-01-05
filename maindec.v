@@ -18,10 +18,12 @@ module maindec(
 );
 	reg		[6:0] 	controls;
 	wire 	[5:0] 	op, funct;
+	wire 	[4:0]	rt;
 	wire			is_dataMov;
 	wire			operateHI, operateLO, readHILO, writeHILO;
 	assign op = instr[31:26];
 	assign funct = instr[5:0];
+	assign rt = instr[20:16];
 	assign {regwrite, regdst, alusrc, branch, memwrite, memtoreg, jump} = controls;
 	always @(*) begin
 		case (op)
@@ -29,57 +31,67 @@ module maindec(
 			`OP_RTYPE	:		//R-TYRE
 				case (funct)
 					// logic
-					`FUNC_AND	:	controls <= 7'b1100000;
-					`FUNC_OR	:	controls <= 7'b1100000;
-					`FUNC_XOR	:	controls <= 7'b1100000;
-					`FUNC_NOR	:	controls <= 7'b1100000;
+					`FUNC_AND	:	controls = 7'b1100000;
+					`FUNC_OR	:	controls = 7'b1100000;
+					`FUNC_XOR	:	controls = 7'b1100000;
+					`FUNC_NOR	:	controls = 7'b1100000;
 					// shift
-					`FUNC_SLL 	:	controls <= 7'b1100000;
-					`FUNC_SRL 	:	controls <= 7'b1100000;
-					`FUNC_SRA 	:	controls <= 7'b1100000;
-					`FUNC_SLLV	:	controls <= 7'b1100000;
-					`FUNC_SRLV	:	controls <= 7'b1100000;
-					`FUNC_SRAV	:	controls <= 7'b1100000;
+					`FUNC_SLL 	:	controls = 7'b1100000;
+					`FUNC_SRL 	:	controls = 7'b1100000;
+					`FUNC_SRA 	:	controls = 7'b1100000;
+					`FUNC_SLLV	:	controls = 7'b1100000;
+					`FUNC_SRLV	:	controls = 7'b1100000;
+					`FUNC_SRAV	:	controls = 7'b1100000;
 					// data move
-					`FUNC_MFHI	:	controls <= 7'b1100000;
-					`FUNC_MFLO	:	controls <= 7'b1100000;
-					`FUNC_MTHI	:	controls <= 7'b0000000;
-					`FUNC_MTLO	:	controls <= 7'b0000000;
+					`FUNC_MFHI	:	controls = 7'b1100000;
+					`FUNC_MFLO	:	controls = 7'b1100000;
+					`FUNC_MTHI	:	controls = 7'b0000000;
+					`FUNC_MTLO	:	controls = 7'b0000000;
 					// arithmetic
-					`FUNC_ADD  	:	controls <= 7'b1100000;
-					`FUNC_ADDU 	:	controls <= 7'b1100000;
-					`FUNC_SUB  	:	controls <= 7'b1100000;
-					`FUNC_SUBU 	:	controls <= 7'b1100000;
-					`FUNC_SLT  	:	controls <= 7'b1100000;
-					`FUNC_SLTU 	:	controls <= 7'b1100000;
+					`FUNC_ADD  	:	controls = 7'b1100000;
+					`FUNC_ADDU 	:	controls = 7'b1100000;
+					`FUNC_SUB  	:	controls = 7'b1100000;
+					`FUNC_SUBU 	:	controls = 7'b1100000;
+					`FUNC_SLT  	:	controls = 7'b1100000;
+					`FUNC_SLTU 	:	controls = 7'b1100000;
 					// 存疑，等会看看
-					`FUNC_MULT 	:	controls <= 7'b0000000;
-					`FUNC_MULTU	:	controls <= 7'b0000000;
-					`FUNC_DIV  	:	controls <= 7'b0000000;
-					`FUNC_DIVU 	:	controls <= 7'b0000000;
-					default:		controls <= 7'b0000000;
+					`FUNC_MULT 	:	controls = 7'b0000000;
+					`FUNC_MULTU	:	controls = 7'b0000000;
+					`FUNC_DIV  	:	controls = 7'b0000000;
+					`FUNC_DIVU 	:	controls = 7'b0000000;
+					// jump
+					`FUNC_JR  	:	controls = 7'b0000001;
+					`FUNC_JALR	:	controls = 7'b1100001;
+					default:		controls = 7'b0000000;
 				endcase
 			// I-type 
+			// {regwrite, regdst, alusrc, branch, memwrite, memtoreg, jump}
 			// --- logic
-			`OP_ANDI	:	controls <= 7'b1010000;
-			`OP_XORI	:	controls <= 7'b1010000;
-			`OP_LUI		:	controls <= 7'b1010000;
-			`OP_ORI		:	controls <= 7'b1010000;
+			`OP_ANDI	:	controls = 7'b1010000;
+			`OP_XORI	:	controls = 7'b1010000;
+			`OP_LUI		:	controls = 7'b1010000;
+			`OP_ORI		:	controls = 7'b1010000;
 			// shift arithmetic instruction
 				// For all shift instruction are R-type, so the control signal is omitted as OP_RTYPE
 			// data move instruction
 				// For all shift instruction are R-type, so the control signal is omitted as OP_RTYPE
 			// --- arithmetic
-    		`OP_ADDI    : 	controls <= 7'b1010000;
-    		`OP_ADDIU   : 	controls <= 7'b1010000;
-    		`OP_SLTI    : 	controls <= 7'b1010000;
-    		`OP_SLTIU   : 	controls <= 7'b1010000;
+    		`OP_ADDI    : 	controls = 7'b1010000;
+    		`OP_ADDIU   : 	controls = 7'b1010000;
+    		`OP_SLTI    : 	controls = 7'b1010000;
+    		`OP_SLTIU   : 	controls = 7'b1010000;
+			// branch and jump	注意是自己写的，没检查，注意是否有bug
+			// 对于AL来说，不是ALR，均保存在31号，只有JALR保存在rd，因此其为regdst为1
+			`OP_J     	:	controls = 7'b0000001;
+			`OP_JAL   	:	controls = 7'b1000001;
+			`OP_BEQ   	:	controls = 7'b0001000;
+			`OP_BNE   	:	controls = 7'b0001000;
+			`OP_BGTZ  	:	controls = 7'b0001000;
+			`OP_BLEZ  	:	controls = 7'b0001000;
+			6'b000001:		controls = {rt[4], 6'b001000};	// bltz, bgez, bltzal, bgetal特判，为al则rt最高位为1，根据规范
 			// misc
 			6'b100011	:	controls <= 7'b1010010;	//LW
 			6'b101011	:	controls <= 7'b0010100;	//SW
-			6'b000100	:	controls <= 7'b0001000;	//BEQ
-			6'b001000	:	controls <= 7'b1010000;	//ADDI
-			6'b000010	:	controls <= 7'b0000001;	//J
 			default		:  	controls <= 7'b0000000;	//illegal op
 		endcase
 	end

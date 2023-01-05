@@ -1,13 +1,14 @@
 `timescale 1ns / 1ps
 `include "define_alu_ctrl.vh"
 `include "define_inst_dec.vh"
+`include "define_bj_control.vh"
 /* signal statement
  * -- decode stage
  *  |- opD:
  *	|- functD:
  *	|- pcsrcD:
  *	|- branchD:
- *	|- equalD:
+ *	|- isBranchNeededD:
  *	|- jumpD:
  *	|- is_IMM:
  * -- execute stage:
@@ -26,12 +27,17 @@ module controller(
 	input 	wire 			clk, rst,
 	//decode stage
 	input  	wire 	[31:0] 	instrD,
-	output 	wire 			pcsrcD, branchD, equalD, jumpD,
+	input 	wire	[31:0]	srca2D, srcb2D,
+	output 	wire			isBranchNeededD,
+	output 	wire			isSaveReg31,		// branch / jump, pc+8=>reg[31]
+	output 	wire			isSaveReg,			// branch / jump, pc+8=>reg[rd]
+	output 	wire 			pcsrcD, branchD, jumpD,
 	output 	wire 			is_IMM,
 	output 	wire 	[1: 0]	HILO_enD,
 	output 	wire 			is_dataMovWriteD,	
 	output 	wire 			is_dataMovReadD,
 	output  wire 			isMulOrDivD,	
+	output  wire			isJumpToRegD,
 	//execute stage
 	input 	wire 			stallE,
 	input 	wire 			flushE,
@@ -74,9 +80,19 @@ module controller(
 		alucontrolD
 	);
 
-	assign pcsrcD = branchD & equalD;
+	branch_jdec bjdec(
+		srca2D, srcb2D,
+		instrD,
+		isBranchNeededD,
+		isSaveReg31,
+		isSaveReg,
+		isJumpToRegD
+	);
 
-	//pipeline registers
+	// pcsrcD
+	assign pcsrcD = branchD & isBranchNeededD;
+
+	// pipeline registers
 	flopenrc #(10) regE(
 		clk,
 		rst,

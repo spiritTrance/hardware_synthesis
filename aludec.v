@@ -41,11 +41,13 @@ module aludec(
 				`FUNC_MULTU:alucontrol = `SIG_ALU_MULTU	;
 				`FUNC_DIV  :alucontrol = `SIG_ALU_DIV  	;
 				`FUNC_DIVU :alucontrol = `SIG_ALU_DIVU 	;
+				// branch and jump
+				`FUNC_JALR :alucontrol = `SIG_ALU_PC8	;
 				default	   :alucontrol = `SIG_ALU_FAIL 	;
 			endcase
 		end
 		else begin	
-			//I-type
+			//I-type, J-type
 			case (op)
 				// logic
 				`OP_ANDI:	alucontrol = `SIG_ALU_AND;
@@ -57,6 +59,10 @@ module aludec(
 				`OP_ADDIU:	alucontrol = `SIG_ALU_ADDU;
 				`OP_SLTI :	alucontrol = `SIG_ALU_SLT;
 				`OP_SLTIU:	alucontrol = `SIG_ALU_SLTU;
+				// branch and jump
+				`OP_JAL		:	alucontrol = `SIG_ALU_PC8;
+				`OP_BLTZAL	:	alucontrol = `SIG_ALU_PC8;
+				`OP_BGEZAL	:	alucontrol = `SIG_ALU_PC8;
 				default:	alucontrol = `SIG_ALU_FAIL; 
 			endcase
 		end

@@ -49,16 +49,13 @@ module alu(
 			`SIG_ALU_SUBU : y = a - b;
 			`SIG_ALU_SLT  : y = $signed(a) < $signed(b) ? 1'b1 : 1'b0; 
 			`SIG_ALU_SLTU : y = a < b ? 1'b1 : 1'b0;
-			// `SIG_ALU_MULT : y = 
-			// `SIG_ALU_MULTU: y = 
-			// `SIG_ALU_DIV  : y = 
-			// `SIG_ALU_DIVU : y = 
+			// branch and jump - al/alr
+			`SIG_ALU_PC8  : y = a + 32'b1000;
 			// fail
 			`SIG_ALU_FAIL:	y <= 32'b0;
 			default : 		y <= 32'b0;
 		endcase	
 	end
-
 
 	// 乘除法处理
 	wire [63: 0] result_mul, result_div;

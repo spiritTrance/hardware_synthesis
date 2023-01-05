@@ -30,5 +30,7 @@
 // datamove instruction
 `define SIG_ALU_MFHI    5'b10_101
 `define SIG_ALU_MFLO    5'b10_110
+// branch and jump instruction
+`define SIG_ALU_PC8     5'b10_111
 // fail
 `define SIG_ALU_FAIL    5'b11_111
