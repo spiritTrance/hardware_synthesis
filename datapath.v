@@ -6,7 +6,7 @@ module datapath(
 	output 	wire	[31:0] 	pcF,
 	input 	wire	[31:0] 	instrF,
 	//mem stage
-	output 	wire			memwriteM,
+	output 	wire	[3:0]	memwriteM,
 	output 	wire	[31:0] 	aluoutM, writedataM,
 	input 	wire	[31:0] 	readdataM
 );
@@ -61,14 +61,17 @@ module datapath(
 	wire 			memtoregM, regwriteM;
 	wire 	[1: 0]	hilo_we; 
 	wire 			stallM;
+	wire	[31:0]	writedata_no_duplicate_M;
 		// - writeback stage
 	wire 	[31:0] 	hi_oW, lo_oW, hilo_ow;
 	wire 	[4:0] 	writeregW;
-	wire 	[31:0] 	aluoutW, readdataW, resultW, alu_memResultW;
+	wire 	[31:0] 	aluoutW, readdataW, readdataExtW, resultW, alu_memResultW;
 	wire 	[1: 0]	HILO_enW;
 	wire			is_dataMovReadW;
 	wire 			memtoregW, regwriteW;
 	wire 			stallW;
+	wire 	[3:0] 	memread_enW;
+	wire 			isMemDataReadSignedW;
 	// control module
 	controller c(
 		clk,rst,
@@ -92,12 +95,18 @@ module datapath(
 		regdstE, regwriteE,	
 		alucontrolE,
 		//mem stage
+		aluoutM,
 		stallM,
-		memtoregM, memwriteM,
+		writedata_no_duplicate_M,
+		memtoregM, 
+		memwriteM,
 		regwriteM,
+		writedataM,
 		//write back stage
 		stallW,
-		memtoregW, regwriteW
+		memtoregW, regwriteW,
+		memread_enW,
+		isMemDataReadSignedW
 	);
 
 	//hazard detection
@@ -195,7 +204,7 @@ module datapath(
 
 	hilo_reg 				hiloReg	(clk, rst, hilo_we, hi_i, lo_i, hi_oM, lo_oM);
 
-	flopenrc 		#(32) 	r1M		(clk, rst, ~stallM, 1'b0, srcb2E, writedataM);
+	flopenrc 		#(32) 	r1M		(clk, rst, ~stallM, 1'b0, srcb2E, writedata_no_duplicate_M);
 	flopenrc 		#(32) 	r2M		(clk, rst, ~stallM, 1'b0, aluoutE, aluoutM);
 	flopenrc 		#(5) 	r3M		(clk, rst, ~stallM, 1'b0, writeregE, writeregM);
 	flopenrc 		#(32) 	r4M		(clk, rst, ~stallM, 1'b0, srcaE, srcaM);		// For HILO registers
@@ -213,7 +222,9 @@ module datapath(
 	flopenrc 		#(32) 	r6W		(clk, rst, ~stallW, 1'b0, hi_oM, hi_oW);							// hilo结果
 	flopenrc 		#(32) 	r7W		(clk, rst, ~stallW, 1'b0, lo_oM, lo_oW);							// hilo结果
 
-	mux2 		#(32) 	resmux				(aluoutW, readdataW, memtoregW, alu_memResultW);					// 原来的mux结果（mem+alu）
+	memdataReadExtend	memdataReadExt_ex	(readdataW, memread_enW, isMemDataReadSignedW, readdataExtW);	// 从数据存储器读出来的数，根据lb,lh进行处理和扩展
+
+	mux2 		#(32) 	resmux				(aluoutW, readdataExtW, memtoregW, alu_memResultW);			// 原来的mux结果（mem+alu）
 	mux2		#(32)	hilomux				(hi_oW, lo_oW, HILO_enW[0], hilo_ow);						// HILO的mux结果
 	mux2		#(32)	hilo_alu_memmux		(alu_memResultW, hilo_ow, is_dataMovReadW, resultW);		// mem,alu和HI/LO的mux结果
 endmodule

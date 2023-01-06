@@ -24,7 +24,7 @@ module mips(
 	input wire clk,rst,
 	output wire[31:0] pcF,
 	input wire[31:0] instrF,
-	output wire memwriteM,
+	output wire [3:0] memwriteM,
 	output wire[31:0] aluoutM,writedataM,
 	input wire[31:0] readdataM 
 );

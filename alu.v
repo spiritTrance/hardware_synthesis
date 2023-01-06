@@ -51,9 +51,11 @@ module alu(
 			`SIG_ALU_SLTU : y = a < b ? 1'b1 : 1'b0;
 			// branch and jump - al/alr
 			`SIG_ALU_PC8  : y = a + 32'b1000;
+			// load and store:
+			`SIG_ALU_MEM  :	y = $signed(a) + $signed(b);
 			// fail
-			`SIG_ALU_FAIL:	y <= 32'b0;
-			default : 		y <= 32'b0;
+			`SIG_ALU_FAIL:	y = 32'b0;
+			default : 		y = 32'b0;
 		endcase	
 	end
 

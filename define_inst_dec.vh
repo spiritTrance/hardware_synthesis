@@ -93,6 +93,17 @@
     // BJ - funct
     `define FUNC_JR     6'b001000
     `define FUNC_JALR   6'b001001
+
+// memory accessing instruction (MEM)
+    // MEM - opcode
+    `define OP_LB       6'b100000
+    `define OP_LBU      6'b100100
+    `define OP_LH       6'b100001
+    `define OP_LHU      6'b100101
+    `define OP_LW       6'b100011
+    `define OP_SB       6'b101000
+    `define OP_SH       6'b101001
+    `define OP_SW       6'b101011
     
 // trap instruction (TRAP)
     // TRAP - opcode

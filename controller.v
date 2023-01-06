@@ -45,24 +45,38 @@ module controller(
 	output 	wire 			regdstE, regwriteE,	
 	output 	wire 	[4:0] 	alucontrolE,
 	//mem stage
+	input 	wire	[31:0]	aluoutM,
 	input 	wire 			stallM,
-	output 	wire 			memtoregM, memwriteM,
-							regwriteM,
+	input 	wire	[31:0]	writedata_no_duplicateM,
+	output 	wire 			memtoregM, 
+	output 	wire	[3:0]	memwriteM,
+	output 	wire			regwriteM,
+	output  wire	[31:0]	writedataM,
 	//write back stage
 	input 	wire 			stallW,
-	output 	wire 			memtoregW, regwriteW
+	output 	wire 			memtoregW, regwriteW,
+	output 	wire	[3:0]	memread_enW,
+	output 	wire 			isMemDataReadSignedW
 );
 	//decode stage
-	wire 			memtoregD, memwriteD, alusrcD,
+	wire 			memtoregD, alusrcD,
 					regdstD, regwriteD;
+	wire	[3:0]	memwriteD, memread_enD;
 	wire	[4:0] 	alucontrolD;
+	wire			isMemDataReadSignedD;		
+	wire 	[3:0]   memInfo_we_bhwD;
 	//execute stage
-	wire 			memwriteE;
+	wire 			isMemDataReadSignedE;	
+	wire 	[3:0]   memInfo_we_bhwE;
+	//memory stage
+	wire 	[3:0]   memInfo_we_bhwM;
+	wire 	[3:0]	memread_enM;
+	wire 			isMemDataReadSignedM;	
+	wire 			mbM, mhM, mwM, mweM;
 
 	maindec md(
 		instrD,
 		memtoregD,
-		memwriteD,
 		branchD,
 		alusrcD,
 		regdstD,
@@ -72,7 +86,9 @@ module controller(
 		HILO_enD,
 		is_dataMovWriteD,
 		is_dataMovReadD,
-		isMulOrDivD
+		isMulOrDivD,
+		isMemDataReadSignedD,
+		memInfo_we_bhwD
 	);
 
 	aludec ad(
@@ -89,32 +105,44 @@ module controller(
 		isJumpToRegD
 	);
 
+	assign {mweM, mbM, mhM, mwM} = memInfo_we_bhwM;
+
+	memdec memdec_Ex(
+		aluoutM,     
+		mweM,        
+		mbM, mhM, mwM,       
+		writedata_no_duplicateM,
+		memwriteM,
+		memread_enM,
+		writedataM
+	);
+
 	// pcsrcD
 	assign pcsrcD = branchD & isBranchNeededD;
 
 	// pipeline registers
-	flopenrc #(10) regE(
+	flopenrc #(14) regE(
 		clk,
 		rst,
 		~stallE,
 		flushE,
-		{memtoregD,memwriteD,alusrcD,regdstD,regwriteD,alucontrolD},
-		{memtoregE,memwriteE,alusrcE,regdstE,regwriteE,alucontrolE}
+		{memtoregD,alusrcD,regdstD,regwriteD,alucontrolD,isMemDataReadSignedD,memInfo_we_bhwD},
+		{memtoregE,alusrcE,regdstE,regwriteE,alucontrolE,isMemDataReadSignedE,memInfo_we_bhwE}
 	);
-	flopenrc #(8) regM(
+	flopenrc #(7) regM(
 		clk,
 		rst,
 		~stallM,
 		1'b0,
-		{memtoregE,memwriteE,regwriteE},
-		{memtoregM,memwriteM,regwriteM}
+		{memtoregE,regwriteE,isMemDataReadSignedE,memInfo_we_bhwE},
+		{memtoregM,regwriteM,isMemDataReadSignedM,memInfo_we_bhwM}
 	);
-	flopenrc #(8) regW(
+	flopenrc #(7) regW(
 		clk,
 		rst,
 		~stallW,
 		1'b0,
-		{memtoregM,regwriteM},
-		{memtoregW,regwriteW}
+		{memtoregM,regwriteM,memread_enM,isMemDataReadSignedM},
+		{memtoregW,regwriteW,memread_enW,isMemDataReadSignedW}
 	);
 endmodule

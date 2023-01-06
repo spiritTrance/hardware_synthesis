@@ -4,7 +4,6 @@
 module maindec(
 	input 	wire	[31:0] 	instr,
 	output 	wire 			memtoreg,		// write back stage: source of data. 0: alu; 1: memory
-	output 	wire 			memwrite,		// memory stage:	 control signal of write to data memory. 0: no; 1: yes
 	output 	wire 			branch,			// decode stage:	 whether is a branch inst. 0: no; 1: yes
 	output 	wire 			alusrc,			// execute stage:	 source of srcB. 0: regfile; 1: immediately
 	output 	wire 			regdst,			// decode stage:	 final destination to regfile of data. 0: instrD[20:16]; 1: instrD[15:11] 
@@ -14,9 +13,12 @@ module maindec(
 	output  wire	[1: 0]	HILO_en,		// decode stage:	 hilo enable signal. HILO_we[1] for hi and [0] for lo
 	output  wire			is_dataMovWrite,		// decode stage:	 whether is data move inst. 1: yes; 0: no
 	output  wire			is_dataMovRead,		// decode stage:	 whether is data move inst. 1: yes; 0: no
-	output  wire			isMulOrDiv		//decode stage:	whether is mul or div inst.
+	output  wire			isMulOrDiv,		//decode stage:	whether is mul or div inst.
+	output 	wire			isMemDataReadSigned,	// write back stage: whether lb, lh, lbu, lhu
+	output	wire 	[3: 0]	memInfo_we_bhw  // decode stage: for mem inst, include 4 signals: memwrite, byte, half, word operation
 );
-	reg		[6:0] 	controls;
+	reg		[5:0] 	controls;
+	reg 	[3:0]	mem_ctrlsigs;
 	wire 	[5:0] 	op, funct;
 	wire 	[4:0]	rt;
 	wire			is_dataMov;
@@ -24,75 +26,84 @@ module maindec(
 	assign op = instr[31:26];
 	assign funct = instr[5:0];
 	assign rt = instr[20:16];
-	assign {regwrite, regdst, alusrc, branch, memwrite, memtoreg, jump} = controls;
+
+	// regwrite, regdst, alusrc, branch, memtoreg, jump
+	assign {regwrite, regdst, alusrc, branch, memtoreg, jump} = controls;
 	always @(*) begin
 		case (op)
 			// logic arithmetic instruction
 			`OP_RTYPE	:		//R-TYRE
 				case (funct)
 					// logic
-					`FUNC_AND	:	controls = 7'b1100000;
-					`FUNC_OR	:	controls = 7'b1100000;
-					`FUNC_XOR	:	controls = 7'b1100000;
-					`FUNC_NOR	:	controls = 7'b1100000;
+					`FUNC_AND	:	controls = 6'b110000;
+					`FUNC_OR	:	controls = 6'b110000;
+					`FUNC_XOR	:	controls = 6'b110000;
+					`FUNC_NOR	:	controls = 6'b110000;
 					// shift
-					`FUNC_SLL 	:	controls = 7'b1100000;
-					`FUNC_SRL 	:	controls = 7'b1100000;
-					`FUNC_SRA 	:	controls = 7'b1100000;
-					`FUNC_SLLV	:	controls = 7'b1100000;
-					`FUNC_SRLV	:	controls = 7'b1100000;
-					`FUNC_SRAV	:	controls = 7'b1100000;
+					`FUNC_SLL 	:	controls = 6'b110000;
+					`FUNC_SRL 	:	controls = 6'b110000;
+					`FUNC_SRA 	:	controls = 6'b110000;
+					`FUNC_SLLV	:	controls = 6'b110000;
+					`FUNC_SRLV	:	controls = 6'b110000;
+					`FUNC_SRAV	:	controls = 6'b110000;
 					// data move
-					`FUNC_MFHI	:	controls = 7'b1100000;
-					`FUNC_MFLO	:	controls = 7'b1100000;
-					`FUNC_MTHI	:	controls = 7'b0000000;
-					`FUNC_MTLO	:	controls = 7'b0000000;
+					`FUNC_MFHI	:	controls = 6'b110000;
+					`FUNC_MFLO	:	controls = 6'b110000;
+					`FUNC_MTHI	:	controls = 6'b000000;
+					`FUNC_MTLO	:	controls = 6'b000000;
 					// arithmetic
-					`FUNC_ADD  	:	controls = 7'b1100000;
-					`FUNC_ADDU 	:	controls = 7'b1100000;
-					`FUNC_SUB  	:	controls = 7'b1100000;
-					`FUNC_SUBU 	:	controls = 7'b1100000;
-					`FUNC_SLT  	:	controls = 7'b1100000;
-					`FUNC_SLTU 	:	controls = 7'b1100000;
+					`FUNC_ADD  	:	controls = 6'b110000;
+					`FUNC_ADDU 	:	controls = 6'b110000;
+					`FUNC_SUB  	:	controls = 6'b110000;
+					`FUNC_SUBU 	:	controls = 6'b110000;
+					`FUNC_SLT  	:	controls = 6'b110000;
+					`FUNC_SLTU 	:	controls = 6'b110000;
 					// 存疑，等会看看
-					`FUNC_MULT 	:	controls = 7'b0000000;
-					`FUNC_MULTU	:	controls = 7'b0000000;
-					`FUNC_DIV  	:	controls = 7'b0000000;
-					`FUNC_DIVU 	:	controls = 7'b0000000;
+					`FUNC_MULT 	:	controls = 6'b000000;
+					`FUNC_MULTU	:	controls = 6'b000000;
+					`FUNC_DIV  	:	controls = 6'b000000;
+					`FUNC_DIVU 	:	controls = 6'b000000;
 					// jump
-					`FUNC_JR  	:	controls = 7'b0000001;
-					`FUNC_JALR	:	controls = 7'b1100001;
-					default:		controls = 7'b0000000;
+					`FUNC_JR  	:	controls = 6'b000001;
+					`FUNC_JALR	:	controls = 6'b110001;
+					default:		controls = 6'b000000;
 				endcase
 			// I-type 
 			// {regwrite, regdst, alusrc, branch, memwrite, memtoreg, jump}
 			// --- logic
-			`OP_ANDI	:	controls = 7'b1010000;
-			`OP_XORI	:	controls = 7'b1010000;
-			`OP_LUI		:	controls = 7'b1010000;
-			`OP_ORI		:	controls = 7'b1010000;
+			`OP_ANDI	:	controls = 6'b101000;
+			`OP_XORI	:	controls = 6'b101000;
+			`OP_LUI		:	controls = 6'b101000;
+			`OP_ORI		:	controls = 6'b101000;
 			// shift arithmetic instruction
 				// For all shift instruction are R-type, so the control signal is omitted as OP_RTYPE
 			// data move instruction
 				// For all shift instruction are R-type, so the control signal is omitted as OP_RTYPE
 			// --- arithmetic
-    		`OP_ADDI    : 	controls = 7'b1010000;
-    		`OP_ADDIU   : 	controls = 7'b1010000;
-    		`OP_SLTI    : 	controls = 7'b1010000;
-    		`OP_SLTIU   : 	controls = 7'b1010000;
+    		`OP_ADDI    : 	controls = 6'b101000;
+    		`OP_ADDIU   : 	controls = 6'b101000;
+    		`OP_SLTI    : 	controls = 6'b101000;
+    		`OP_SLTIU   : 	controls = 6'b101000;
 			// branch and jump	注意是自己写的，没检查，注意是否有bug
 			// 对于AL来说，不是ALR，均保存在31号，只有JALR保存在rd，因此其为regdst为1
-			`OP_J     	:	controls = 7'b0000001;
-			`OP_JAL   	:	controls = 7'b1000001;
-			`OP_BEQ   	:	controls = 7'b0001000;
-			`OP_BNE   	:	controls = 7'b0001000;
-			`OP_BGTZ  	:	controls = 7'b0001000;
-			`OP_BLEZ  	:	controls = 7'b0001000;
-			6'b000001:		controls = {rt[4], 6'b001000};	// bltz, bgez, bltzal, bgetal特判，为al则rt最高位为1，根据规范
-			// misc
-			6'b100011	:	controls <= 7'b1010010;	//LW
-			6'b101011	:	controls <= 7'b0010100;	//SW
-			default		:  	controls <= 7'b0000000;	//illegal op
+			`OP_J     	:	controls = 6'b000001;
+			`OP_JAL   	:	controls = 6'b100001;
+			`OP_BEQ   	:	controls = 6'b000100;
+			`OP_BNE   	:	controls = 6'b000100;
+			`OP_BGTZ  	:	controls = 6'b000100;
+			`OP_BLEZ  	:	controls = 6'b000100;
+			6'b000001:		controls = {rt[4], 5'b00100};	// bltz, bgez, bltzal, bgetal特判，为al则rt最高位为1，根据规范
+			// memory
+			`OP_LB 		:	controls = 6'b101010;
+			`OP_LBU		:	controls = 6'b101010;
+			`OP_LH 		:	controls = 6'b101010;
+			`OP_LHU		:	controls = 6'b101010;
+			`OP_LW 		:	controls = 6'b101010;
+			`OP_SB 		:	controls = 6'b001000;
+			`OP_SH 		:	controls = 6'b001000;
+			`OP_SW 		:	controls = 6'b001000;
+			// default
+			default		:  	controls = 6'b000000;	//illegal op
 		endcase
 	end
 	// immediately number
@@ -110,4 +121,22 @@ module maindec(
 	assign is_dataMovWrite = is_dataMov & writeHILO;
 	assign is_dataMovRead = is_dataMov & readHILO;
 	assign HILO_en = {operateHI, operateLO};
+
+	// memread_en and memwrite enable
+
+	assign isMemDataReadSigned = ~((op == `OP_LBU) | (op == `OP_LHU));
+	assign memInfo_we_bhw = mem_ctrlsigs;	// write, byte, half, word
+	always @(*) begin
+		case(op)
+			`OP_LB :	mem_ctrlsigs = 4'b0_100;
+			`OP_LBU:	mem_ctrlsigs = 4'b0_100;
+			`OP_LH :	mem_ctrlsigs = 4'b0_010;
+			`OP_LHU:	mem_ctrlsigs = 4'b0_010;
+			`OP_LW :	mem_ctrlsigs = 4'b0_001;
+			`OP_SB :	mem_ctrlsigs = 4'b1_100;
+			`OP_SH :	mem_ctrlsigs = 4'b1_010;
+			`OP_SW :	mem_ctrlsigs = 4'b1_001;
+			default:	mem_ctrlsigs = 4'b0_000;
+		endcase
+	end
 endmodule

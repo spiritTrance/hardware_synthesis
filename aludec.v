@@ -63,6 +63,15 @@ module aludec(
 				`OP_JAL		:	alucontrol = `SIG_ALU_PC8;
 				`OP_BLTZAL	:	alucontrol = `SIG_ALU_PC8;
 				`OP_BGEZAL	:	alucontrol = `SIG_ALU_PC8;
+				// load and store
+				`OP_LB 		:	alucontrol = `SIG_ALU_MEM;
+				`OP_LBU		:	alucontrol = `SIG_ALU_MEM;
+				`OP_LH 		:	alucontrol = `SIG_ALU_MEM;
+				`OP_LHU		:	alucontrol = `SIG_ALU_MEM;
+				`OP_LW 		:	alucontrol = `SIG_ALU_MEM;
+				`OP_SB 		:	alucontrol = `SIG_ALU_MEM;
+				`OP_SH 		:	alucontrol = `SIG_ALU_MEM;
+				`OP_SW 		:	alucontrol = `SIG_ALU_MEM;
 				default:	alucontrol = `SIG_ALU_FAIL; 
 			endcase
 		end

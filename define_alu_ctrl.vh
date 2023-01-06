@@ -32,5 +32,7 @@
 `define SIG_ALU_MFLO    5'b10_110
 // branch and jump instruction
 `define SIG_ALU_PC8     5'b10_111
+// memory
+`define SIG_ALU_MEM     5'b11_000
 // fail
 `define SIG_ALU_FAIL    5'b11_111
