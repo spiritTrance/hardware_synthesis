@@ -230,9 +230,9 @@ module datapath(
 
 	//mem stage
 	// TODO: hiloreg clk, M signal or E signal? I think it's E signal instead of M signal, the mux is moved to E stage.
-	assign hilo_we = HILO_enM & ({2{is_dataMovWriteM}} | {2{isMulOrDivM}}) & {2{~stallM}};	// 这里可能会加stallE的信号，注意下
+	assign hilo_we = HILO_enE & ({2{is_dataMovWriteE}} | {2{isMulOrDivE}}) & {2{~stallE}};	// 这里可能会加stallE的信号，注意下
 
-	hilo_reg 				hiloReg	(clk, rst, hilo_we, hi_iM, lo_iM, hi_oM, lo_oM);
+	hilo_reg 				hiloReg	(clk, rst, hilo_we, hi_iE, lo_iE, hi_oM, lo_oM);
 
 	flopenrc 		#(64) 	r0M		(clk, rst, ~stallM, 1'b0, {hi_iE, lo_iE}, {hi_iM, lo_iM});
 	flopenrc 		#(32) 	r1M		(clk, rst, ~stallM, 1'b0, srcb2E, writedata_no_duplicate_M);
