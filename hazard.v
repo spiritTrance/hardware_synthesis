@@ -10,6 +10,7 @@ module hazard(
 	output wire forwardaD, forwardbD,
 	output wire stallD,
 	output wire flushD,
+	input wire isJRD, isJALRD,
 	//execute stage
 	input wire[4:0] rsE,rtE,
 	input wire[4:0] writeregE,
@@ -30,7 +31,7 @@ module hazard(
 	output wire stallW
     );
 
-	wire lwstallD,branchstallD;
+	wire lwstallD,branchstallD,jumpstallD;
 
 	//forwarding sources to D stage (branch equality)
 	assign forwardaD = (rsD != 0 & rsD == writeregM & regwriteM);
@@ -64,19 +65,26 @@ module hazard(
 	end
 
 	//stalls
-	assign lwstallD = memtoregE & (rtE == rsD | rtE == rtD);			// Ex： lw，Dec：related
+	// 注意lwstall, jumpstall和branchstall都是因为数据冒险产生的
+	assign lwstallD = memtoregE & (rtE == rsD | rtE == rtD);			// Ex： lw，Dec：related -> Dec: related, ex: nop, mem: lw
+	assign jumpstallD = (isJALRD | isJRD) & 
+			(regwriteE & 				// 写寄存器，因为在Ex阶段，branch需要的结果还没算出来
+			(writeregE == rsD | writeregE == rtD) |
+			memtoregM &					// 读mem，写寄存器，在Mem阶段，branch需要的结果还没从Mem读出来
+			(writeregM == rsD | writeregM == rtD));
 	assign branchstallD = branchD &
 			(regwriteE & 				// 写寄存器，因为在Ex阶段，branch需要的结果还没算出来
 			(writeregE == rsD | writeregE == rtD) |
 			memtoregM &					// 读mem，写寄存器，在Mem阶段，branch需要的结果还没从Mem读出来
 			(writeregM == rsD | writeregM == rtD));
-	assign stallF = lwstallD | branchstallD | isMulOrDivComputingE;		// 注意这个一停全停的策略可能不正确（主要是对性能有影响），如果是lwstall和branchstall只有F和D要停，改了之后重点检查mul和div，先暂时写在这里
-	assign stallD = lwstallD | branchstallD | isMulOrDivComputingE;
+
+	assign stallF = lwstallD | branchstallD | jumpstallD | isMulOrDivComputingE;		// 注意这个一停全停的策略可能不正确（主要是对性能有影响），如果是lwstall和branchstall只有F和D要停，改了之后重点检查mul和div，先暂时写在这里
+	assign stallD = lwstallD | branchstallD | jumpstallD | isMulOrDivComputingE;
 	assign stallE = isMulOrDivComputingE;
 	assign stallM = isMulOrDivComputingE;
 	assign stallW = isMulOrDivComputingE;
 		//stalling D stalls all previous stages
-	assign flushE = (lwstallD) & ~isMulOrDivComputingE;
+	assign flushE = (lwstallD | branchstallD | jumpstallD) & ~isMulOrDivComputingE;
 		//stalling D flushes next stage
 	assign flushD = 1'b0;			// 不能像默认的通路图那样冲刷，因为MIPS有延迟槽
 	// Note: not necessary to stall D stage on store

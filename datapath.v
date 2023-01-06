@@ -2,13 +2,18 @@
 
 module datapath(
 	input 	wire 			clk,rst,
-	//fetch stage
+	// instr - F
 	output 	wire	[31:0] 	pcF,
 	input 	wire	[31:0] 	instrF,
-	//mem stage
+	// data - M
 	output 	wire	[3:0]	memwriteM,
 	output 	wire	[31:0] 	aluoutM, writedataM,
-	input 	wire	[31:0] 	readdataM
+	input 	wire	[31:0] 	readdataM,
+	// debug - W
+	output 	wire 	[31:0]	debug_pcW,
+	output  wire	[3:0]	debug_regwriteW,
+	output 	wire 	[4:0]	debug_writeregW,
+	output 	wire	[31:0]	debug_resultW
 );
 	// defination
 		// - fetch stage
@@ -24,13 +29,14 @@ module datapath(
 	wire 	[31:0] 	signimmD,signimmshD;
 	wire 	[31:0] 	srcaD,srca2D,srcbD,srcb2D;
 	wire 	[4:0] 	saD;
-	wire 			pcsrcD, branchD, jumpD, isBranchNeededD, is_IMM;
+	wire 			pcsrcD, branchD, jumpD, isBranchNeededD, is_UIMM;
 	wire 	[1:0]	HILO_enD;
 	wire			is_dataMovWriteD, is_dataMovReadD;		// 注意这个读和写是相对HILO而言的
 	wire 			isMulOrDivD;
 	wire 			isSaveReg31D;
 	wire 			isSaveRegD;
 	wire 			isJumpToRegD;
+	wire 			isJRD, isJALRD;
 		// - execute stage
 	wire	[31:0]	pcE;
 	wire	[1:0] 	forwardaE,forwardbE;
@@ -50,11 +56,14 @@ module datapath(
 	wire 			isMulOrDivE;
 	wire 			isSaveReg31E;
 	wire 			isSaveRegE;
+	wire 	[31:0] 	hi_iE, lo_iE;
 		// - mem stage
+	wire 			isMulOrDivM;
+	wire	[31:0]	pcM;
 	wire 	[4:0] 	writeregM;
 	wire 	[31:0]	srcaM;			// hilo register needed
 	wire 	[31:0] 	hi_oM, lo_oM;
-	wire 	[31:0] 	hi_i, lo_i;
+	wire 	[31:0] 	hi_iM, lo_iM;
 	wire 	[1: 0]	HILO_enM;
 	wire	[63:0]	alu_HILOM;
 	wire			is_dataMovWriteM, is_dataMovReadM;
@@ -63,6 +72,7 @@ module datapath(
 	wire 			stallM;
 	wire	[31:0]	writedata_no_duplicate_M;
 		// - writeback stage
+	wire	[31:0]	pcW;
 	wire 	[31:0] 	hi_oW, lo_oW, hilo_ow;
 	wire 	[4:0] 	writeregW;
 	wire 	[31:0] 	aluoutW, readdataW, readdataExtW, resultW, alu_memResultW;
@@ -72,6 +82,20 @@ module datapath(
 	wire 			stallW;
 	wire 	[3:0] 	memread_enW;
 	wire 			isMemDataReadSignedW;
+
+		// debug ascii
+	wire	[31:0]	instrE, instrM, instrW;
+	wire 	[39:0]	asciiD, asciiE,	asciiM,	asciiW;
+	instdec instD(instrD, asciiD);
+	instdec instE(instrE, asciiE);
+	instdec instM(instrM, asciiM);
+	instdec instW(instrW, asciiW);
+		// debug assign
+	assign debug_pcW = pcW;
+	assign debug_regwriteW = {{4{regwriteW}} & ~{4{stallW}}};		// 这里加入stallW是因为 trace 的 sim 原理：如果检测到写入信号，就继续读golden_trace的下一行，实际上停止的时候，很多控制信号应该无效化才合理
+	assign debug_writeregW = writeregW;
+	assign debug_resultW = resultW;
+
 	// control module
 	controller c(
 		clk,rst,
@@ -82,12 +106,14 @@ module datapath(
 		isSaveReg31D,
 		isSaveRegD,
 		pcsrcD, branchD, jumpD,
-		is_IMM,
+		is_UIMM,
 		HILO_enD,
 		is_dataMovWriteD,
 		is_dataMovReadD,
 		isMulOrDivD,
 		isJumpToRegD,
+		isJRD,
+		isJALRD,
 		//execute stage
 		stallE,
 		flushE,
@@ -121,6 +147,7 @@ module datapath(
 		forwardaD,forwardbD,
 		stallD,
 		flushD,
+		isJRD, isJALRD,
 		//execute stage
 		rsE,rtE,
 		writeregE,
@@ -160,7 +187,9 @@ module datapath(
 	flopenrc 	#(32) 	r1D			(clk, rst, ~stallD, flushD, pcplus4F, pcplus4D);	// 这里改了一下，不知道有没有bug
 	flopenrc 	#(32) 	r2D			(clk, rst, ~stallD, flushD, instrF, instrD);
 	flopenrc 	#(32) 	r3D			(clk, rst, ~stallD, flushD, pcF, pcD);				// branch/jump的pc+8计算
-	signext 			se			(instrD[15:0], is_IMM, signimmD);					// 数据扩展
+	flopenrc 		#(32) 	debug_asciiD		(clk, rst, ~stallD, flushD, instrF, instrD);
+
+	signext 			se			(instrD[15:0], is_UIMM, signimmD);					// 数据扩展
 	sl2 				immsh		(signimmD, signimmshD);								// 左移位
 	adder 				pcadd2		(pcplus4D, signimmshD, pcbranchD);
 	mux2 		#(32) 	forwardamux	(srcaD, aluoutM, forwardaD, srca2D);
@@ -188,6 +217,7 @@ module datapath(
 	flopenrc		#(1)	r11E	(clk, rst, ~stallE, flushE, isMulOrDivD, isMulOrDivE);
 	flopenrc		#(32)	r12E	(clk, rst, ~stallE, flushE, pcD, pcE);
 	flopenrc		#(2)	r13E	(clk, rst, ~stallE, flushE, {isSaveRegD, isSaveReg31D}, {isSaveRegE, isSaveReg31E});	// pc + 8 逻辑
+	flopenrc 		#(32) 	debug_asciiE 		(clk, rst, ~stallE, flushE, instrD,	instrE);
 
 	mux3 		#(32) 	forwardaemux	(srcaE, resultW, aluoutM, forwardaE, srca2E);
 	mux3 		#(32) 	forwardbemux	(srcbE, resultW, aluoutM, forwardbE, srcb2E);
@@ -195,15 +225,16 @@ module datapath(
 	mux2 		#(32) 	srca2Emux		(srca2E, pcE, isSaveRegE, srca3E);		// pc+8逻辑（bj指令）
 	alu 				alu				(clk, rst, srca3E, srcb3E, alucontrolE, aluoutE, saE, alu_HILO_iE, alu_HILO_oE, isMulOrDivComputingE, isMulOrDivResultOkE);
 	mux3 		#(5) 	writeregmux		(rtE, rdE, 5'b11111, {isSaveReg31E, regdstE}, writeregE);		// d0, d1, d2
-	mux2 		#(32) 	hi_mux			(alu_HILO_oE[63: 32], srcaE, is_dataMovWriteE, hi_i);			// HILO输入的mux（来自于alu还是寄存器堆），如果是1则来自于寄存器堆，否则来自于alu（乘除法计算结果）
-	mux2 		#(32) 	lo_mux			(alu_HILO_oE[31: 0 ], srcaE, is_dataMovWriteE, lo_i);			// HILO输入的mux（来自于alu还是寄存器堆），如果是1则来自于寄存器堆，否则来自于alu（乘除法计算结果）
+	mux2 		#(32) 	hi_mux			(alu_HILO_oE[63: 32], srca3E, is_dataMovWriteE, hi_iE);			// HILO输入的mux（来自于alu还是寄存器堆），如果是1则来自于寄存器堆，否则来自于alu（乘除法计算结果）
+	mux2 		#(32) 	lo_mux			(alu_HILO_oE[31: 0 ], srca3E, is_dataMovWriteE, lo_iE);			// HILO输入的mux（来自于alu还是寄存器堆），如果是1则来自于寄存器堆，否则来自于alu（乘除法计算结果）
 
 	//mem stage
 	// TODO: hiloreg clk, M signal or E signal? I think it's E signal instead of M signal, the mux is moved to E stage.
-	assign hilo_we = HILO_enE & ({2{is_dataMovWriteE}} | {2{isMulOrDivE}}) & {2{~stallE}};	// 这里可能会加stallE的信号，注意下
+	assign hilo_we = HILO_enM & ({2{is_dataMovWriteM}} | {2{isMulOrDivM}}) & {2{~stallM}};	// 这里可能会加stallE的信号，注意下
 
-	hilo_reg 				hiloReg	(clk, rst, hilo_we, hi_i, lo_i, hi_oM, lo_oM);
+	hilo_reg 				hiloReg	(clk, rst, hilo_we, hi_iM, lo_iM, hi_oM, lo_oM);
 
+	flopenrc 		#(64) 	r0M		(clk, rst, ~stallM, 1'b0, {hi_iE, lo_iE}, {hi_iM, lo_iM});
 	flopenrc 		#(32) 	r1M		(clk, rst, ~stallM, 1'b0, srcb2E, writedata_no_duplicate_M);
 	flopenrc 		#(32) 	r2M		(clk, rst, ~stallM, 1'b0, aluoutE, aluoutM);
 	flopenrc 		#(5) 	r3M		(clk, rst, ~stallM, 1'b0, writeregE, writeregM);
@@ -212,6 +243,9 @@ module datapath(
 	flopenrc 		#(1) 	r6M		(clk, rst, ~stallM, 1'b0, is_dataMovWriteE, is_dataMovWriteM);
 	flopenrc 		#(2) 	r7M		(clk, rst, ~stallM, 1'b0, HILO_enE, HILO_enM);
 	flopenrc 		#(64) 	r8M		(clk, rst, ~stallM, 1'b0, alu_HILO_oE, alu_HILOM);
+	flopenrc 		#(32) 	r9M		(clk, rst, ~stallM, 1'b0, pcE, pcM);
+	flopenrc 		#(1) 	r10M	(clk, rst, ~stallM, 1'b0, isMulOrDivE, isMulOrDivM);
+	flopenrc 		#(32) 	debug_asciiM		(clk, rst, ~stallM, 1'b0, 	instrE, instrM);
 
 	//writeback stage
 	flopenrc 		#(32) 	r1W		(clk, rst, ~stallW, 1'b0, aluoutM, aluoutW);
@@ -221,6 +255,8 @@ module datapath(
 	flopenrc 		#(2) 	r5W		(clk, rst, ~stallW, 1'b0, HILO_enM, HILO_enW);						// HILO使能传递
 	flopenrc 		#(32) 	r6W		(clk, rst, ~stallW, 1'b0, hi_oM, hi_oW);							// hilo结果
 	flopenrc 		#(32) 	r7W		(clk, rst, ~stallW, 1'b0, lo_oM, lo_oW);							// hilo结果
+	flopenrc 		#(32) 	r8W		(clk, rst, ~stallW, 1'b0, pcM, pcW);							// hilo结果
+	flopenrc 		#(32) 	debug_asciiW	(clk, rst, ~stallW, 1'b0, 	instrM, instrW);
 
 	memdataReadExtend	memdataReadExt_ex	(readdataW, memread_enW, isMemDataReadSignedW, readdataExtW);	// 从数据存储器读出来的数，根据lb,lh进行处理和扩展
 

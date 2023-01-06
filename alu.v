@@ -23,7 +23,7 @@ module alu(
 	// arithmetic result driver
 	// 计算结果y的驱动
 	always @(*) begin
-		case (op[4:0])
+		case (op)
 			// logic
 			`SIG_ALU_AND:	y = a & b;
 			`SIG_ALU_OR :	y = a | b;
@@ -33,12 +33,12 @@ module alu(
 			// shift
 				// logic shift: <</>>; arithmetic shift: <<</>>>
 				// NOTE THAT sys function $signed() can make it considered to be a signed number
-			`SIG_ALU_SLL :	y = b << sa;
-			`SIG_ALU_SRL :	y = b >> sa;
-			`SIG_ALU_SRA :	y = $signed(b) >>> sa;
-			`SIG_ALU_SLLV:	y = b << a;
-			`SIG_ALU_SRLV:	y = b >> a;
-			`SIG_ALU_SRAV:	y = $signed(b) >>> a;
+			`SIG_ALU_SLL :	y = b << sa[4:0];
+			`SIG_ALU_SRL :	y = b >> sa[4:0];
+			`SIG_ALU_SRA :	y = $signed(b) >>> sa[4:0];
+			`SIG_ALU_SLLV:	y = b << a[4:0];
+			`SIG_ALU_SRLV:	y = b >> a[4:0];
+			`SIG_ALU_SRAV:	y = $signed(b) >>> a[4:0];
 			// data move	冒险解决的需要
 			`SIG_ALU_MFHI:	y = HILO_i[63: 32];
 			`SIG_ALU_MFLO:	y = HILO_i[31: 0 ];

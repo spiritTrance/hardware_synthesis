@@ -10,7 +10,7 @@
  *	|- branchD:
  *	|- isBranchNeededD:
  *	|- jumpD:
- *	|- is_IMM:
+ *	|- is_UIMM:
  * -- execute stage:
  *  |- flushE:
  *  |- memtoregE:
@@ -32,12 +32,14 @@ module controller(
 	output 	wire			isSaveReg31,		// branch / jump, pc+8=>reg[31]
 	output 	wire			isSaveReg,			// branch / jump, pc+8=>reg[rd]
 	output 	wire 			pcsrcD, branchD, jumpD,
-	output 	wire 			is_IMM,
+	output 	wire 			is_UIMM,
 	output 	wire 	[1: 0]	HILO_enD,
 	output 	wire 			is_dataMovWriteD,	
 	output 	wire 			is_dataMovReadD,
 	output  wire 			isMulOrDivD,	
 	output  wire			isJumpToRegD,
+	output 	wire			isJRD,
+	output 	wire			isJALRD,
 	//execute stage
 	input 	wire 			stallE,
 	input 	wire 			flushE,
@@ -82,13 +84,15 @@ module controller(
 		regdstD,
 		regwriteD,
 		jumpD,
-		is_IMM,
+		is_UIMM,
 		HILO_enD,
 		is_dataMovWriteD,
 		is_dataMovReadD,
 		isMulOrDivD,
 		isMemDataReadSignedD,
-		memInfo_we_bhwD
+		memInfo_we_bhwD,
+		isJRD,
+		isJALRD
 	);
 
 	aludec ad(

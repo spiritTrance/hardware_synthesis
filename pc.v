@@ -20,14 +20,14 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module pc #(parameter WIDTH = 8)(
+module pc #(parameter WIDTH = 32)(
 	input wire clk,rst,en,
 	input wire[WIDTH-1:0] d,
 	output reg[WIDTH-1:0] q
     );
 	always @(posedge clk,posedge rst) begin
 		if(rst) begin
-			q <= 0;
+			q <= 32'hbfc00000;		// 根据sram的要求，修改复位PC
 		end else if(en) begin
 			/* code */
 			q <= d;

@@ -9,13 +9,15 @@ module maindec(
 	output 	wire 			regdst,			// decode stage:	 final destination to regfile of data. 0: instrD[20:16]; 1: instrD[15:11] 
 	output 	wire 			regwrite,		// decode stage:	 control signal of write to regfile. 0: no; 1: yes 
 	output 	wire 			jump,			// decode stage:	 signal of jump instruction. 0: no; 1: yes
-	output 	wire 			is_IMM,			// decode stage:	 signal of immediately operator. 0: no; 1: yes
+	output 	wire 			is_UIMM,			// decode stage:	 signal of immediately operator. 0: no; 1: yes
 	output  wire	[1: 0]	HILO_en,		// decode stage:	 hilo enable signal. HILO_we[1] for hi and [0] for lo
 	output  wire			is_dataMovWrite,		// decode stage:	 whether is data move inst. 1: yes; 0: no
 	output  wire			is_dataMovRead,		// decode stage:	 whether is data move inst. 1: yes; 0: no
 	output  wire			isMulOrDiv,		//decode stage:	whether is mul or div inst.
 	output 	wire			isMemDataReadSigned,	// write back stage: whether lb, lh, lbu, lhu
-	output	wire 	[3: 0]	memInfo_we_bhw  // decode stage: for mem inst, include 4 signals: memwrite, byte, half, word operation
+	output	wire 	[3: 0]	memInfo_we_bhw,  // decode stage: for mem inst, include 4 signals: memwrite, byte, half, word operation
+	output 	wire			isJR,
+	output 	wire			isJALR
 );
 	reg		[5:0] 	controls;
 	reg 	[3:0]	mem_ctrlsigs;
@@ -69,7 +71,6 @@ module maindec(
 					default:		controls = 6'b000000;
 				endcase
 			// I-type 
-			// {regwrite, regdst, alusrc, branch, memwrite, memtoreg, jump}
 			// --- logic
 			`OP_ANDI	:	controls = 6'b101000;
 			`OP_XORI	:	controls = 6'b101000;
@@ -86,6 +87,7 @@ module maindec(
     		`OP_SLTIU   : 	controls = 6'b101000;
 			// branch and jump	注意是自己写的，没检查，注意是否有bug
 			// 对于AL来说，不是ALR，均保存在31号，只有JALR保存在rd，因此其为regdst为1
+			// {regwrite, regdst, alusrc, branch, memwrite, memtoreg, jump}
 			`OP_J     	:	controls = 6'b000001;
 			`OP_JAL   	:	controls = 6'b100001;
 			`OP_BEQ   	:	controls = 6'b000100;
@@ -107,7 +109,7 @@ module maindec(
 		endcase
 	end
 	// immediately number
-	assign is_IMM = (op[5:2] == 4'b0011) ? 1'b1 : 1'b0;		//andi, xori, lui, ori 无符号拓展
+	assign is_UIMM = (op[5:2] == 4'b0011) ? 1'b1 : 1'b0;		//andi, xori, lui, ori 无符号拓展
 	// HILO signal
 	assign is_dataMov = ( op != `OP_RTYPE ) ? 1'b0 :
 						( funct[5:2] == 4'b0100 ) ? 1'b1: 1'b0;		// 是否为数据移动指令，但注意传到数据通路的时候，由于是用来做多路选择的，取值为0则为乘除法
@@ -139,4 +141,8 @@ module maindec(
 			default:	mem_ctrlsigs = 4'b0_000;
 		endcase
 	end
+
+	// JR and JALR hazard
+	assign isJR = (op == `OP_JR) & (funct == `FUNC_JR);
+	assign isJALR = (op == `OP_JALR) & (funct == `FUNC_JALR);
 endmodule

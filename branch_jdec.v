@@ -24,8 +24,8 @@ module branch_jdec(
 			 			  : ((op == `OP_BGEZ  ) && (rt[0] == 1'b1)) ?	($signed(a) >= 0)  // bgez, bgezal	又是一个小细节，差点被坑
 			 			  : 						1'b0;
 	assign isSaveReg31 = (op == `OP_JAL) ? 1'b1 :
-						 ((op == `OP_BLTZAL)	&&	(rt[4] == 1'b1)) ? 1'b1 : 1'b0;	// 这一句实际包括bltzal和bgezal，小细节
-	assign isSaveReg   = isSaveReg31 | (funct == `FUNC_JALR);
+						 ((op == `OP_BLTZAL) &&	(rt[4] == 1'b1)) ? 1'b1 : 1'b0;	// 这一句实际包括bltzal和bgezal，小细节
+	assign isSaveReg   = isSaveReg31 | ((funct == `FUNC_JALR) & (op == `OP_JALR));
 	assign isJumpToReg = ((funct == `FUNC_JR) | (funct == `FUNC_JALR)) & (op == 6'b000000);
 endmodule
 
