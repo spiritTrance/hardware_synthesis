@@ -5,8 +5,9 @@ module aludec(
 	input 	wire	[31:0] 	instrD,
 	output 	reg		[4:0] 	alucontrol
     );
-	wire [5:0] op, funct;
+	wire [5:0] op, funct, rs;
 	assign op = instrD[31:26];
+	assign rs = instrD[25:21];
 	assign funct = instrD[5:0];
 	always @(*) begin
 		if (op == `OP_RTYPE) begin		
@@ -72,6 +73,8 @@ module aludec(
 				`OP_SB 		:	alucontrol = `SIG_ALU_MEM;
 				`OP_SH 		:	alucontrol = `SIG_ALU_MEM;
 				`OP_SW 		:	alucontrol = `SIG_ALU_MEM;
+				// privilege
+				`OP_PRIVILEGE	:	alucontrol = ~(|rs) ? `SIG_ALU_MFC0 : `SIG_ALU_FAIL;		// mfc0
 				default:	alucontrol = `SIG_ALU_FAIL; 
 			endcase
 		end

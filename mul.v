@@ -3,7 +3,8 @@ module mul(
     input   wire    [31:0]      a,
     input   wire    [31:0]      b,
     input   wire                sign,
-    output                      data_ok,
+    input   wire                interrupt,      // 主要是应对flush
+    output                      data_ok,        // 计算好数据
     output  wire    [63:0]      result
 );
     // mealy状态机设计：     idle -> busy -> idle
@@ -19,8 +20,8 @@ module mul(
         end
         else begin
             case (state)
-                IDLE:   state <= drive_en ? STAGE1 : IDLE;
-                STAGE1: state <= STAGE2;
+                IDLE:   state <= interrupt ? IDLE: drive_en ? STAGE1 : IDLE;
+                STAGE1: state <= interrupt ? IDLE: STAGE2;
                 STAGE2: state <= IDLE;
                 default: state <= IDLE; 
             endcase

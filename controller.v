@@ -26,6 +26,7 @@
 module controller(
 	input 	wire 			clk, rst,
 	//decode stage
+	input 	wire 			stallD, flushD,
 	input  	wire 	[31:0] 	instrD,
 	input 	wire	[31:0]	srca2D, srcb2D,
 	output 	wire			isBranchNeededD,
@@ -38,43 +39,63 @@ module controller(
 	output 	wire 			is_dataMovReadD,
 	output  wire 			isMulOrDivD,	
 	output  wire			isJumpToRegD,
-	output 	wire			isJRD,
-	output 	wire			isJALRD,
+	output 	wire			isJRD, isJALRD,
+	output 	wire			isEretD,
 	//execute stage
-	input 	wire 			stallE,
-	input 	wire 			flushE,
+	input 	wire 			stallE, flushE,
+	input 	wire	[31:0]	pcE,
+	input 	wire	[31:0]	aluoutE,
+	input 	wire	[31:0]	writedata_no_duplicateE,
+	input 	wire			aluoverflowE,
 	output 	wire 			memtoregE, alusrcE,
 	output 	wire 			regdstE, regwriteE,	
 	output 	wire 	[4:0] 	alucontrolE,
+	output 	wire			isDelaySlotInstrE,
+	output 	wire 			cp0write_enE,
+	output 	wire	[31:0]  exceptionTypeE,
+	output 	wire			haveExceptionE,
+	output 	wire	[31:0]	badAddrE,
 	//mem stage
-	input 	wire	[31:0]	aluoutM,
-	input 	wire 			stallM,
-	input 	wire	[31:0]	writedata_no_duplicateM,
+	input 	wire 			stallM, flushM,
 	output 	wire 			memtoregM, 
 	output 	wire	[3:0]	memwriteM,
 	output 	wire			regwriteM,
 	output  wire	[31:0]	writedataM,
 	//write back stage
-	input 	wire 			stallW,
+	input 	wire 			stallW, flushW,
 	output 	wire 			memtoregW, regwriteW,
 	output 	wire	[3:0]	memread_enW,
 	output 	wire 			isMemDataReadSignedW
 );
-	//decode stage
+	// fetch stage
+	wire			isDelaySlotInstrF;
+	// decode stage
 	wire 			memtoregD, alusrcD,
 					regdstD, regwriteD;
 	wire	[3:0]	memwriteD, memread_enD;
 	wire	[4:0] 	alucontrolD;
 	wire			isMemDataReadSignedD;		
 	wire 	[3:0]   memInfo_we_bhwD;
-	//execute stage
+	wire			isDelaySlotInstrD;
+	wire			isBreakExceptionD, isSyscallExceptionD;
+	wire			cp0write_enD;
+	wire			retainInstrExceptionD;
+	// execute stage
 	wire 			isMemDataReadSignedE;	
 	wire 	[3:0]   memInfo_we_bhwE;
-	//memory stage
-	wire 	[3:0]   memInfo_we_bhwM;
+	wire			isBreakExceptionE, isSyscallExceptionE, isEretE;
+	wire 			mbE, mhE, mwE, mweE;
+	wire	[3:0]	memwriteE;
+	wire 	[3:0]	memread_enE;
+	wire 	[31:0]	writedataE;
+	wire 			isLoadExceptionE, isStoreExceptionE;
+	wire			retainInstrExceptionE;
+	wire 	[31:0] 	memAddrE;
+	// memory stage
 	wire 	[3:0]	memread_enM;
+	wire 	[3:0]   memInfo_we_bhwM;
 	wire 			isMemDataReadSignedM;	
-	wire 			mbM, mhM, mwM, mweM;
+	wire			isBreakExceptionM, isSyscallExceptionM, isEretM;
 
 	maindec md(
 		instrD,
@@ -91,8 +112,10 @@ module controller(
 		isMulOrDivD,
 		isMemDataReadSignedD,
 		memInfo_we_bhwD,
-		isJRD,
-		isJALRD
+		isJRD, isJALRD,
+		isBreakExceptionD, isSyscallExceptionD, isEretD,
+		cp0write_enD,
+		retainInstrExceptionD
 	);
 
 	aludec ad(
@@ -109,22 +132,52 @@ module controller(
 		isJumpToRegD
 	);
 
-	assign {mweM, mbM, mhM, mwM} = memInfo_we_bhwM;
+	assign memAddrE = aluoutE;
 
-	memdec memdec_Ex(
-		aluoutM,     
-		mweM,        
-		mbM, mhM, mwM,       
-		writedata_no_duplicateM,
-		memwriteM,
-		memread_enM,
-		writedataM
+	exceptiondec exceptiondec_example(
+		pcE,        // 地址错误，MEM阶段写入异常
+		memAddrE,
+		isSyscallExceptionE,    // syscall
+		isBreakExceptionE,      // break
+		isEretE,       // eret
+		isLoadExceptionE,       // load addr except
+		isStoreExceptionE,      // store addr except
+		aluoverflowE,   // overflow exception
+		1'b0,  // 中断例外，这里根据ppt提示没有接
+		retainInstrExceptionE, // 保留指令例外
+		exceptionTypeE,
+		haveExceptionE,           // 异常信号
+		badAddrE
+	);
+
+	assign {mweE, mbE, mhE, mwE} = memInfo_we_bhwE;
+
+	memdec memdec_EXE(
+		memAddrE,     
+		mweE,        
+		mbE, mhE, mwE,       
+		writedata_no_duplicateE,
+		memwriteE,
+		memread_enE,
+		writedataE,
+		isLoadExceptionE,
+		isStoreExceptionE
 	);
 
 	// pcsrcD
 	assign pcsrcD = branchD & isBranchNeededD;
-
+	assign isDelaySlotInstrF = jumpD | branchD;
 	// pipeline registers
+	// decode
+	flopenrc #(1) regD(
+		clk,
+		rst,
+		~stallD,
+		flushD,
+		{isDelaySlotInstrF},
+		{isDelaySlotInstrD}
+	);
+	// exec
 	flopenrc #(14) regE(
 		clk,
 		rst,
@@ -133,19 +186,39 @@ module controller(
 		{memtoregD,alusrcD,regdstD,regwriteD,alucontrolD,isMemDataReadSignedD,memInfo_we_bhwD},
 		{memtoregE,alusrcE,regdstE,regwriteE,alucontrolE,isMemDataReadSignedE,memInfo_we_bhwE}
 	);
-	flopenrc #(7) regM(
+	flopenrc #(7) regE_ex(
+		clk,
+		rst,
+		~stallE,
+		flushE,
+		{retainInstrExceptionD, isDelaySlotInstrD, isSyscallExceptionD, isBreakExceptionD, isEretD, cp0write_enD, isBreakExceptionD},
+		{retainInstrExceptionE, isDelaySlotInstrE, isSyscallExceptionE, isBreakExceptionE, isEretE, cp0write_enE, isBreakExceptionE}
+	);
+
+	// mem
+	flopenrc #(15) regM(
 		clk,
 		rst,
 		~stallM,
-		1'b0,
-		{memtoregE,regwriteE,isMemDataReadSignedE,memInfo_we_bhwE},
-		{memtoregM,regwriteM,isMemDataReadSignedM,memInfo_we_bhwM}
+		flushM,
+		{memtoregE,regwriteE,isMemDataReadSignedE,memInfo_we_bhwE,memwriteE,memread_enE},
+		{memtoregM,regwriteM,isMemDataReadSignedM,memInfo_we_bhwM,memwriteM,memread_enM}
 	);
+	flopenrc #(4) regM_ex(
+		clk,
+		rst,
+		~stallM,
+		flushM,
+		{isDelaySlotInstrE, isSyscallExceptionE, isBreakExceptionE, isEretE},
+		{isDelaySlotInstrM, isSyscallExceptionM, isBreakExceptionM, isEretM}
+	);
+	flopenrc #(32) regM_memdata(clk, rst, ~stallM, flushM, writedataE, writedataM);
+	// writeback
 	flopenrc #(7) regW(
 		clk,
 		rst,
 		~stallW,
-		1'b0,
+		flushW,
 		{memtoregM,regwriteM,memread_enM,isMemDataReadSignedM},
 		{memtoregW,regwriteW,memread_enW,isMemDataReadSignedW}
 	);

@@ -112,3 +112,7 @@
     // TRAP - funct
     `define FUNCT_BREAK    6'b00_1101
     `define FUNCT_SYSCALL  6'b00_1100
+
+// privilege instruction (PRIV)
+    // PRIV - opcode
+    `define OP_PRIVILEGE    6'b010000

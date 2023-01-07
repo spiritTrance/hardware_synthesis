@@ -34,5 +34,7 @@
 `define SIG_ALU_PC8     5'b10_111
 // memory
 `define SIG_ALU_MEM     5'b11_000
+// privilege    
+`define SIG_ALU_MFC0    5'b11_001
 // fail
 `define SIG_ALU_FAIL    5'b11_111

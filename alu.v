@@ -13,15 +13,18 @@ module alu(
 	output 	reg		[31:0] 	y,
 	input 	wire	[4:0]	sa,
 	input 	wire 	[63:0]	HILO_i,
+	input 	wire	[31:0]	cp0_i,
+	input  	wire			flushE,
 	output 	wire 	[63:0]	HILO_o,
 	output  wire			isMulOrDivComputing,	
 	output 	wire 			isMulOrDivResultOk,
-	output 	reg 			overflow,
+	output 	wire 			overflow,
 	output 	wire 			zero
 	// output	wire			divByZero			// TODO: 除零例外
     );
 	// arithmetic result driver
 	// 计算结果y的驱动
+	wire addOverflow, subOverflow;
 	always @(*) begin
 		case (op)
 			// logic
@@ -53,6 +56,8 @@ module alu(
 			`SIG_ALU_PC8  : y = a + 32'b1000;
 			// load and store:
 			`SIG_ALU_MEM  :	y = $signed(a) + $signed(b);
+			// mfc0:	针对通用寄存器冒险解决的需要
+			`SIG_ALU_MFC0 : y = cp0_i;
 			// fail
 			`SIG_ALU_FAIL:	y = 32'b0;
 			default : 		y = 32'b0;
@@ -68,18 +73,20 @@ module alu(
 	assign sign = (op == `SIG_ALU_DIV) | (op == `SIG_ALU_MULT);
 	assign isMulOrDivResultOk = isMulResultOk | isDivResultOk;
 	assign isMulOrDivComputing = (isMul | isDiv) & (~isMulOrDivResultOk); 
-	mul mul_example(clk, rst, isMul, a, b, sign, isMulResultOk, result_mul);		// 乘法器件
+	mul mul_example(clk, rst, isMul, a, b, sign, 1'b0, isMulResultOk, result_mul);		// 乘法器件
 	div div_example(clk, rst, sign, a, b, isDiv & ~isDivResultOk, 1'b0, result_div, isDivResultOk);	// 除法器件
 
-	// overflow driver
-	// 溢出信号驱动
-	always @(*) begin
-		case (op[4:0])
-			default : overflow <= 1'b0;
-		endcase	
-	end
+	// overflow case；
+	// a[31] b[31] 1'b1, y[31] 1'b0
+	// a[31] b[31] 1'b0, y[31] 1'b1
+	assign addOverflow = (op == `SIG_ALU_ADD) ? // 是否为add和sub指令
+							(a[31] ^ b[31]) ? 1'b0 :	//两个操作数是否异号，异号则一定不会溢出
+								 (a[31] ^ y[31]) ? 1'b1 : 1'b0 : 1'b0;	// 输入和输出的符号位，如果异号则发生溢出，否则没有；最后一个标识不为add和sub
+	assign subOverflow = (op == `SIG_ALU_SUB) ? 
+							~(a[31] ^ b[31]) ? 1'b0 :	// 两个操作数是否同号，同号则一定不溢出
+							 (a[31] ^ y[31]) ? 1'b1 : 1'b0 : 1'b0;							// 两种情况：正数减负数，负数减正数，正确结果是正数和负数，即结果与被减数同号，如果相异，异或符号位必然为1
+	assign overflow = addOverflow | subOverflow;
 	assign zero = (y == 32'b0);
-
 
 	// HILO
 	assign HILO_o = isMul & isMulResultOk ? result_mul:

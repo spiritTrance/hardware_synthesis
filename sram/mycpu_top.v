@@ -39,6 +39,7 @@ module mycpu_top (
     datapath dp(
         .clk(~clk),
         .rst(~resetn),
+        .ext_int(ext_int),
         // instr
         .pcF(inst_vaddr),
         .instrF(inst_sram_rdata),

@@ -9,29 +9,35 @@ module maindec(
 	output 	wire 			regdst,			// decode stage:	 final destination to regfile of data. 0: instrD[20:16]; 1: instrD[15:11] 
 	output 	wire 			regwrite,		// decode stage:	 control signal of write to regfile. 0: no; 1: yes 
 	output 	wire 			jump,			// decode stage:	 signal of jump instruction. 0: no; 1: yes
-	output 	wire 			is_UIMM,			// decode stage:	 signal of immediately operator. 0: no; 1: yes
+	output 	wire 			is_UIMM,		// decode stage:	 signal of immediately operator. 0: no; 1: yes
 	output  wire	[1: 0]	HILO_en,		// decode stage:	 hilo enable signal. HILO_we[1] for hi and [0] for lo
-	output  wire			is_dataMovWrite,		// decode stage:	 whether is data move inst. 1: yes; 0: no
-	output  wire			is_dataMovRead,		// decode stage:	 whether is data move inst. 1: yes; 0: no
+	output  wire			is_dataMovWrite,// decode stage:	 whether is data move inst. 1: yes; 0: no
+	output  wire			is_dataMovRead,	// decode stage:	 whether is data move inst. 1: yes; 0: no
 	output  wire			isMulOrDiv,		//decode stage:	whether is mul or div inst.
 	output 	wire			isMemDataReadSigned,	// write back stage: whether lb, lh, lbu, lhu
-	output	wire 	[3: 0]	memInfo_we_bhw,  // decode stage: for mem inst, include 4 signals: memwrite, byte, half, word operation
-	output 	wire			isJR,
-	output 	wire			isJALR
-);
+	output	wire 	[3: 0]	memInfo_we_bhw, // decode stage: for mem inst, include 4 signals: memwrite, byte, half, word operation
+	output 	wire			isJR, isJALR,
+	output 	wire			isBreakException, isSyscallException, isEret,
+	output 	wire			cp0write_en,
+	output 	wire			retainInstrException
+);	
 	reg		[5:0] 	controls;
 	reg 	[3:0]	mem_ctrlsigs;
+	reg				decException;
 	wire 	[5:0] 	op, funct;
-	wire 	[4:0]	rt;
+	wire 	[4:0]	rt, rs;
 	wire			is_dataMov;
 	wire			operateHI, operateLO, readHILO, writeHILO;
 	assign op = instr[31:26];
 	assign funct = instr[5:0];
 	assign rt = instr[20:16];
+	assign rs = instr[25:21];
 
 	// regwrite, regdst, alusrc, branch, memtoreg, jump
 	assign {regwrite, regdst, alusrc, branch, memtoreg, jump} = controls;
+	assign retainInstrException = decException & ~isBreakException & ~isSyscallException & ~isEret;
 	always @(*) begin
+		decException = 1'b0;
 		case (op)
 			// logic arithmetic instruction
 			`OP_RTYPE	:		//R-TYRE
@@ -68,7 +74,10 @@ module maindec(
 					// jump
 					`FUNC_JR  	:	controls = 6'b000001;
 					`FUNC_JALR	:	controls = 6'b110001;
-					default:		controls = 6'b000000;
+					default:	begin
+						controls = 6'b000000;
+						decException = 1'b1;
+					end
 				endcase
 			// I-type 
 			// --- logic
@@ -104,8 +113,17 @@ module maindec(
 			`OP_SB 		:	controls = 6'b001000;
 			`OP_SH 		:	controls = 6'b001000;
 			`OP_SW 		:	controls = 6'b001000;
+			// privilege
+			`OP_PRIVILEGE:	
+				case (rs)
+					5'b00100 : controls = 6'b000000;	// mtc0
+					5'b00000 : controls = 6'b100000;	// mfc0
+				endcase
 			// default
-			default		:  	controls = 6'b000000;	//illegal op
+			default		:  	begin
+				controls = 6'b000000;	//illegal op
+				decException = 1'b1;
+			end
 		endcase
 	end
 	// immediately number
@@ -145,4 +163,10 @@ module maindec(
 	// JR and JALR hazard
 	assign isJR = (op == `OP_JR) & (funct == `FUNC_JR);
 	assign isJALR = (op == `OP_JALR) & (funct == `FUNC_JALR);
+
+	// 异常指令
+	assign isBreakException = (op == 6'b000000 && funct == 6'b001101);
+	assign isSyscallException = (op == 6'b000000 && funct == 6'b001100);
+	assign isEret = (instr == 32'b01000010000000000000000000011000);
+	assign cp0write_en = (op == 6'b010000) & (rs == 5'b00100);		// mtc0
 endmodule

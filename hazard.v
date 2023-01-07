@@ -1,38 +1,38 @@
 `timescale 1ns / 1ps
 module hazard(
 	//fetch stage
-	output wire stallF,
+	output wire stallF, flushF,
 	//decode stage
 	input wire[4:0] rsD, rtD,
 	input wire branchD,
 	input wire pcsrcD,
 	input wire jumpD,
-	output wire forwardaD, forwardbD,
-	output wire stallD,
-	output wire flushD,
 	input wire isJRD, isJALRD,
+	input wire isEretD,
+	output wire forwardaD, forwardbD,
+	output wire stallD, flushD,
 	//execute stage
 	input wire[4:0] rsE,rtE,
 	input wire[4:0] writeregE,
 	input wire regwriteE,
 	input wire memtoregE,
 	input wire isMulOrDivComputingE,
+	input wire haveExceptionE,
+	input wire isEretE,
 	output reg[1:0] forwardaE,forwardbE,
-	output wire flushE,
-	output wire stallE,
+	output wire stallE, flushE,
 	//mem stage
 	input wire[4:0] writeregM,
 	input wire regwriteM,
 	input wire memtoregM,
-	output wire stallM,
+	output wire stallM, flushM,
 	//write back stage
 	input wire[4:0] writeregW,
 	input wire regwriteW,
-	output wire stallW
+	output wire stallW, flushW
     );
 
 	wire lwstallD,branchstallD,jumpstallD;
-
 	//forwarding sources to D stage (branch equality)
 	assign forwardaD = (rsD != 0 & rsD == writeregM & regwriteM);
 	assign forwardbD = (rtD != 0 & rtD == writeregM & regwriteM);
@@ -78,17 +78,22 @@ module hazard(
 			memtoregM &					// 读mem，写寄存器，在Mem阶段，branch需要的结果还没从Mem读出来
 			(writeregM == rsD | writeregM == rtD));
 
-	assign stallF = lwstallD | branchstallD | jumpstallD | isMulOrDivComputingE;		// 注意这个一停全停的策略可能不正确（主要是对性能有影响），如果是lwstall和branchstall只有F和D要停，改了之后重点检查mul和div，先暂时写在这里
-	assign stallD = lwstallD | branchstallD | jumpstallD | isMulOrDivComputingE;
+	// stall
+	assign stallF = ((lwstallD | branchstallD | jumpstallD) & ~haveExceptionE) | isMulOrDivComputingE;		// 注意这个一停全停的策略可能不正确（主要是对性能有影响），如果是lwstall和branchstall只有F和D要停，改了之后重点检查mul和div，先暂时写在这里
+	assign stallD = ((lwstallD | branchstallD | jumpstallD) & ~flushD) | isMulOrDivComputingE;
 	assign stallE = isMulOrDivComputingE;
 	assign stallM = isMulOrDivComputingE;
 	assign stallW = isMulOrDivComputingE;
-		//stalling D stalls all previous stages
-	assign flushE = (lwstallD | branchstallD | jumpstallD) & ~isMulOrDivComputingE;
-		//stalling D flushes next stage
-	assign flushD = 1'b0;			// 不能像默认的通路图那样冲刷，因为MIPS有延迟槽
-	// Note: not necessary to stall D stage on store
-  	//       if source comes from load;
-  	//       instead, another bypass network could
-  	//       be added from W to M
+	// flush
+	assign flushF = 1'b0;				// 肯定不能刷，不然指令取不进来
+	assign flushD = (isEretD & ~stallE) | haveExceptionE;			// eret没有延迟槽，要刷掉
+	assign flushE = ((lwstallD | branchstallD | jumpstallD) & ~isMulOrDivComputingE) | haveExceptionE;
+	assign flushM = haveExceptionE;			// E阶段的信号，能够检测到所有异常了，到M的时候应该刷掉
+	assign flushW = 1'b0;
 endmodule
+
+
+
+// TODO : pcF, hazard, pipeline flush 
+// and stall, cp0 write
+//hazard: mfc0 $3, cause,($3 <= cause) mtc0 $3, cause (cause <= $3)hazard针对的是通用寄存器
