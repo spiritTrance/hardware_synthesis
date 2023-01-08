@@ -47,6 +47,8 @@ module controller(
 	input 	wire	[31:0]	aluoutE,
 	input 	wire	[31:0]	writedata_no_duplicateE,
 	input 	wire			aluoverflowE,
+	input 	wire	[31:0]	cp0causeE,
+	input 	wire	[31:0]	cp0statusE,
 	output 	wire 			memtoregE, alusrcE,
 	output 	wire 			regdstE, regwriteE,	
 	output 	wire 	[4:0] 	alucontrolE,
@@ -137,6 +139,8 @@ module controller(
 	exceptiondec exceptiondec_example(
 		pcE,        // 地址错误，MEM阶段写入异常
 		memAddrE,
+		cp0causeE,
+		cp0statusE,
 		isSyscallExceptionE,    // syscall
 		isBreakExceptionE,      // break
 		isEretE,       // eret

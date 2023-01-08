@@ -46,7 +46,7 @@ module cp0_reg(
 				/* code */
 				timer_int_o <= `InterruptAssert;
 			end
-			if(we_i == `WriteEnable) begin	
+			if(we_i == `WriteEnable) begin
 				/* code */
 				case (waddr_i)	// 根据地址写相应的寄存器（写，mtc0啥的）
 					`CP0_REG_COUNT:begin 

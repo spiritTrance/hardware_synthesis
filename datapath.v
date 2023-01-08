@@ -134,6 +134,8 @@ module datapath(
 		aluoutE,
 		writedata_no_duplicate_E,
 		aluoverflowE,
+		cause_oM,
+		status_oM,
 		memtoregE, alusrcE,
 		regdstE, regwriteE,	
 		alucontrolE,

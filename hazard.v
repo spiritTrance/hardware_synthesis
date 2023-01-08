@@ -79,10 +79,10 @@ module hazard(
 			(writeregM == rsD | writeregM == rtD));
 
 	// stall
-	assign stallF = ((lwstallD | branchstallD | jumpstallD) & ~haveExceptionE) | isMulOrDivComputingE;		// 注意这个一停全停的策略可能不正确（主要是对性能有影响），如果是lwstall和branchstall只有F和D要停，改了之后重点检查mul和div，先暂时写在这里
-	assign stallD = ((lwstallD | branchstallD | jumpstallD) & ~flushD) | isMulOrDivComputingE;
-	assign stallE = isMulOrDivComputingE;
-	assign stallM = isMulOrDivComputingE;
+	assign stallF = stallD | ((lwstallD | branchstallD | jumpstallD) & ~haveExceptionE) | isMulOrDivComputingE;		// 注意这个一停全停的策略可能不正确（主要是对性能有影响），如果是lwstall和branchstall只有F和D要停，改了之后重点检查mul和div，先暂时写在这里
+	assign stallD = stallE | ((lwstallD | branchstallD | jumpstallD) & ~flushD) | isMulOrDivComputingE;
+	assign stallE = stallM | isMulOrDivComputingE;
+	assign stallM = stallW | isMulOrDivComputingE;
 	assign stallW = isMulOrDivComputingE;
 	// flush
 	assign flushF = 1'b0;				// 肯定不能刷，不然指令取不进来
