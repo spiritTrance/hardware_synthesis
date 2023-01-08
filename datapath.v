@@ -60,6 +60,7 @@ module datapath(
 	wire 			isSaveReg31E;
 	wire 			isSaveRegE;
 	wire 	[31:0] 	hi_iE, lo_iE;
+	wire 	[31:0] 	hi_oE, lo_oE;	// 不能严格说是M阶段，因为是异步读，准确来说，是ExE阶段读，插进ALU方便数据前推
 	wire			cp0reg_weE;
 	wire 	[31:0]	exceptionTypeE;
 	wire 	[31:0]	badVaddriE;
@@ -69,6 +70,8 @@ module datapath(
 	wire 			aluoverflowE;	
 	wire 			haveExceptionE;
 	wire 			isEretE;
+	wire 	[31:0]	count_oE, compare_oE, status_oE, cause_oE, epc_oE, config_oE, prid_oE, badvaddrE;	//cp0reg的各种寄存器，还有data_i。需要注意的是，这是异步读，说是M，是因为cp0_reg可以视为在EX/MEM那里的寄存器
+	wire 			timer_int_oE;
 		// - mem stage
 	wire 			isMulOrDivM;
 	wire	[31:0]	pcM;
@@ -82,8 +85,6 @@ module datapath(
 	wire 			memtoregM, regwriteM;
 	wire 	[1: 0]	hilo_we; 
 	wire 			flushM, stallM;
-	wire 	[31:0]	count_oM, compare_oM, status_oM, cause_oM, epc_oM, config_oM, prid_oM, badvaddrM;	//cp0reg的各种寄存器，还有data_i。需要注意的是，这是异步读，说是M，是因为cp0_reg可以视为在EX/MEM那里的寄存器
-	wire 			timer_int_oM;
 		// - writeback stage
 	wire	[31:0]	pcW;
 	wire 	[31:0] 	hi_oW, lo_oW, hilo_ow;
@@ -134,8 +135,8 @@ module datapath(
 		aluoutE,
 		writedata_no_duplicate_E,
 		aluoverflowE,
-		cause_oM,
-		status_oM,
+		cause_oE,
+		status_oE,
 		memtoregE, alusrcE,
 		regdstE, regwriteE,	
 		alucontrolE,
@@ -209,15 +210,15 @@ module datapath(
 		badVaddriE,				// 取指地址或访存地址
 		// output
 		cp0data_oE,			// 从CP0寄存器堆读出的数据
-		count_oM,		// count寄存器
-		compare_oM,		// 这个只会在一定时候写入
-		status_oM,		// 寄存器中断状态
-		cause_oM,		// 引发例外的原因
-		epc_oM,			// EPC
-		config_oM,		// 不知道是啥，但是值是固定的
-		prid_oM,			// 不知道是啥，但是值是固定的
-		badvaddrM,		// 取指或访存的问题
-		timer_int_oM		// count和compare相同时引发中断
+		count_oE,		// count寄存器
+		compare_oE,		// 这个只会在一定时候写入
+		status_oE,		// 寄存器中断状态
+		cause_oE,		// 引发例外的原因
+		epc_oE,			// EPC
+		config_oE,		// 不知道是啥，但是值是固定的
+		prid_oE,			// 不知道是啥，但是值是固定的
+		badvaddrE,		// 取指或访存的问题
+		timer_int_oE		// count和compare相同时引发中断
 	);
 
 	assign immPCD = { pcplus4D[31: 28], instrD[25: 0], 2'b00 };
@@ -226,7 +227,7 @@ module datapath(
 // 	mux2 		#(32) 	pcmux		(pcnextbrFD, { pcplus4D[31: 28], instrD[25: 0], 2'b00 }, jumpD, pcnextFD);		// {pc + 4, branch} 和 j 型指令跳转
 	mux3		#(32)	pcmux		(pcplus4F, pcbranchD, immPCD, {jumpD, pcsrcD}, pcnextFD_pc4_branch_simplej);		// 0: pc + 4, 1: branch, 2: jump
 	mux2		#(32)	pcmux_jr_F	(pcnextFD_pc4_branch_simplej, srca2D, isJumpToRegD, pcnextNormalFD);		// 正常情况下的pc
-	mux3		#(32)	pcmux_except(pcnextNormalFD, EXCEPT_ADDR, epc_oM, {isEretD, haveExceptionE}, pcnextFD);	// 综合正常和异常情况下的pc, 注意异常情况要排除Eret的情况，然后eret是不会动epc的，放心用，但是这里有个问题是不知道有没有异常套异常的情况？理论上没有，因为epc只有一个，异常套异常就别想回去了。
+	mux3		#(32)	pcmux_except(pcnextNormalFD, EXCEPT_ADDR, epc_oE, {isEretD, haveExceptionE}, pcnextFD);	// 综合正常和异常情况下的pc, 注意异常情况要排除Eret的情况，然后eret是不会动epc的，放心用，但是这里有个问题是不知道有没有异常套异常的情况？理论上没有，因为epc只有一个，异常套异常就别想回去了。
 	// regfile (operates in decode and writeback)
 	regfile rf(clk, regwriteW, rsD, rtD, writeregW, resultW, srcaD, srcbD);
 	// RF - regwriteW is write signal
@@ -255,7 +256,7 @@ module datapath(
 
 	//execute stage
 
-	assign alu_HILO_iE = {hi_oM, lo_oM};
+	assign alu_HILO_iE = {hi_oE, lo_oE};
 	assign writedata_no_duplicate_E = srcb2E;
 	
 	flopenrc 		#(32) 	r1E 	(clk, rst, ~stallE, flushE, srcaD, srcaE);
@@ -298,9 +299,10 @@ module datapath(
 	// TODO: hiloreg clk, M signal or E signal? I think it's E signal instead of M signal, the mux is moved to E stage.
 	assign hilo_we = HILO_enE & ({2{is_dataMovWriteE}} | {2{isMulOrDivE}}) & {2{~stallE}};	// 这里可能会加exception的信号，注意下
 
-	hilo_reg 				hiloReg	(clk, rst, hilo_we, hi_iE, lo_iE, hi_oM, lo_oM);
+	hilo_reg 				hiloReg	(clk, rst, hilo_we, hi_iE, lo_iE, hi_oE, lo_oE);
 
 	flopenrc 		#(64) 	r0M		(clk, rst, ~stallM, flushM, {hi_iE, lo_iE}, {hi_iM, lo_iM});
+	flopenrc 		#(64) 	r1M		(clk, rst, ~stallM, flushM, {hi_oE, lo_oE}, {hi_oM, lo_oM});
 	// flopenrc 		#(32) 	r1M		(clk, rst, ~stallM, flushM, srcb2E, writedata_no_duplicate_M);
 	flopenrc 		#(32) 	r2M		(clk, rst, ~stallM, flushM, aluoutE, aluoutM);
 	flopenrc 		#(5) 	r3M		(clk, rst, ~stallM, flushM, writeregE, writeregM);
