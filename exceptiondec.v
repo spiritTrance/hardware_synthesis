@@ -27,7 +27,6 @@ module exceptiondec(
                            isInstrAddrExceptionE    ? 32'h0000_0004 :
                            isRetainedInstructionE   ? 32'h0000_000a :
                            isOverflowExceptionE     ? 32'h0000_000c :
-                        //    isTrapExceptionE         ? 32'h0000_000c :    // 说是没有陷阱例外，省略了
                            isSyscallExceptionE      ? 32'h0000_0008 :
                            isLoadExceptionE         ? 32'h0000_0004 :
                            isStoreExceptionE        ? 32'h0000_0005 :

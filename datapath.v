@@ -1,12 +1,16 @@
 `timescale 1ns / 1ps
 
 module datapath(
-	input 	wire 			clk,rst,
-	input 			[5:0]	ext_int,
+	input 	wire 			clk, rst,
+	input 	wire	[5:0]	ext_int,
+	input	wire			ext_stall,
+	output 	wire			pipelineStall,
 	// instr - F
+	output 	wire			sram_inst_en,
 	output 	wire	[31:0] 	pcF,
 	input 	wire	[31:0] 	instrF,
 	// data - M
+	output 	wire			sram_data_en,
 	output 	wire	[3:0]	memwriteM,
 	output 	wire	[31:0] 	aluoutM, writedataM,
 	input 	wire	[31:0] 	readdataM,
@@ -18,6 +22,8 @@ module datapath(
 );
 	localparam EXCEPT_ADDR = 32'hbfc00380;
 	// defination
+		// - external
+	wire			instExtInterStallFlush, dataExtInterStallFlush;
 		// - fetch 
 	wire 			flushF, stallF;
 		// - FD
@@ -83,7 +89,7 @@ module datapath(
 	wire	[63:0]	alu_HILOM;
 	wire			is_dataMovWriteM, is_dataMovReadM;
 	wire 			memtoregM, regwriteM;
-	wire 	[1: 0]	hilo_we; 
+	wire 	[1: 0]	hilo_weE; 
 	wire 			flushM, stallM;
 		// - writeback stage
 	wire	[31:0]	pcW;
@@ -110,6 +116,14 @@ module datapath(
 	assign debug_writeregW = writeregW;
 	assign debug_resultW = resultW;
 
+	// sram
+		// pipelineStall
+		assign pipelineStall = stallF;
+		// instr
+		assign sram_inst_en = ~instExtInterStallFlush;	// 不是外部流水线停止造成的
+		// data
+        assign sram_data_en = (~dataExtInterStallFlush) & (memtoregM | (|memwriteM));  	// 非冲刷或停顿，且有读写需求
+		
 	// control module
 	controller c(
 		clk,rst,
@@ -160,6 +174,10 @@ module datapath(
 
 	// hazard detection
 	hazard h(
+		// external
+		ext_stall,
+		instExtInterStallFlush,
+		dataExtInterStallFlush,
 		//fetch stage
 		stallF, flushF,
 		//decode stage
@@ -297,9 +315,9 @@ module datapath(
 
 	//mem stage
 	// TODO: hiloreg clk, M signal or E signal? I think it's E signal instead of M signal, the mux is moved to E stage.
-	assign hilo_we = HILO_enE & ({2{is_dataMovWriteE}} | {2{isMulOrDivE}}) & {2{~stallE}};	// 这里可能会加exception的信号，注意下
+	assign hilo_weE = HILO_enE & ({2{is_dataMovWriteE}} | {2{isMulOrDivE}}) & {2{~stallE}};	// 这里可能会加exception的信号，注意下
 
-	hilo_reg 				hiloReg	(clk, rst, hilo_we, hi_iE, lo_iE, hi_oE, lo_oE);
+	hilo_reg 				hiloReg	(clk, rst, hilo_weE, hi_iE, lo_iE, hi_oE, lo_oE);
 
 	flopenrc 		#(64) 	r0M		(clk, rst, ~stallM, flushM, {hi_iE, lo_iE}, {hi_iM, lo_iM});
 	flopenrc 		#(64) 	r1M		(clk, rst, ~stallM, flushM, {hi_oE, lo_oE}, {hi_oM, lo_oM});

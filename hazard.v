@@ -1,5 +1,9 @@
 `timescale 1ns / 1ps
 module hazard(
+	// external
+	input		extStall,
+	output 		instInnerStallFlush,
+	output 		dataInnerStallFlush,
 	//fetch stage
 	output wire stallF, flushF,
 	//decode stage
@@ -79,17 +83,22 @@ module hazard(
 			(writeregM == rsD | writeregM == rtD));
 
 	// stall
-	assign stallF = stallD | ((lwstallD | branchstallD | jumpstallD) & ~haveExceptionE) | isMulOrDivComputingE;		// 注意这个一停全停的策略可能不正确（主要是对性能有影响），如果是lwstall和branchstall只有F和D要停，改了之后重点检查mul和div，先暂时写在这里
-	assign stallD = stallE | ((lwstallD | branchstallD | jumpstallD) & ~flushD) | isMulOrDivComputingE;
-	assign stallE = stallM | isMulOrDivComputingE;
-	assign stallM = stallW | isMulOrDivComputingE;
-	assign stallW = isMulOrDivComputingE;
+	// Ex阶段触发异常/一个特殊的例外是软中断异常，在M阶段触发，原因是出现错误的pc为E阶段/M阶段的
+	// 注意haveException，如果前面有异常那后面没必要停了，为啥有flushD，是因为如果stallD了下一拍就把分支指令刷了，而flushD的情况是有异常，没必要等
+	assign stallF = extStall | stallD | ((lwstallD | branchstallD | jumpstallD) & ~haveExceptionE);		// 注意这个一停全停的策略可能不正确（主要是对性能有影响），如果是lwstall和branchstall只有F和D要停，改了之后重点检查mul和div，先暂时写在这里
+	assign stallD = extStall | stallE | ((lwstallD | branchstallD | jumpstallD) & ~flushD);
+	assign stallE = extStall | stallM;
+	assign stallM = extStall | stallW;
+	assign stallW = extStall | isMulOrDivComputingE;
 	// flush
-	assign flushF = 1'b0;				// 肯定不能刷，不然指令取不进来
-	assign flushD = (isEretD & ~stallE) | haveExceptionE;			// eret没有延迟槽，要刷掉
-	assign flushE = ((lwstallD | branchstallD | jumpstallD) & ~isMulOrDivComputingE) | haveExceptionE;
-	assign flushM = haveExceptionE;			// E阶段的信号，能够检测到所有异常了，到M的时候应该刷掉
+	assign flushF = 1'b0;				// 注意这里是不需要加exception的，因为有问题后，pcnext为32'bf00380(异常处理入口)，而不应该刷新
+	assign flushD = haveExceptionE | (isEretD & ~stallE);			// eret没有延迟槽，要刷掉，但前提是前面没有stall，不然Eret上不去
+	assign flushE = haveExceptionE | ((lwstallD | branchstallD | jumpstallD) & ~stallE);		// E阶段不停顿，就应该刷掉，防止D阶段的分支指令凑上来搞事，但E停止除外
+	assign flushM = haveExceptionE;			// E阶段的信号能检测到所有异常，一般是当前指令有问题，下一阶段MEM要刷掉，特殊情况是软中断，但经过观察，EPC是E阶段的，所以没问题
 	assign flushW = 1'b0;
+	// ext
+	assign instInnerStallFlush = ((lwstallD | branchstallD | jumpstallD) & ~haveExceptionE) | isMulOrDivComputingE | ((lwstallD | branchstallD | jumpstallD) & ~flushD);
+	assign dataInnerStallFlush = isMulOrDivComputingE | flushM;
 endmodule
 
 

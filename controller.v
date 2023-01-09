@@ -30,8 +30,8 @@ module controller(
 	input  	wire 	[31:0] 	instrD,
 	input 	wire	[31:0]	srca2D, srcb2D,
 	output 	wire			isBranchNeededD,
-	output 	wire			isSaveReg31,		// branch / jump, pc+8=>reg[31]
-	output 	wire			isSaveReg,			// branch / jump, pc+8=>reg[rd]
+	output 	wire			isSaveReg31,		// branch / jump, pc+8 => reg[31]
+	output 	wire			isSaveReg,			// branch / jump, pc+8 => reg[rd]
 	output 	wire 			pcsrcD, branchD, jumpD,
 	output 	wire 			is_UIMM,
 	output 	wire 	[1: 0]	HILO_enD,
@@ -74,7 +74,7 @@ module controller(
 	// decode stage
 	wire 			memtoregD, alusrcD,
 					regdstD, regwriteD;
-	wire	[3:0]	memwriteD, memread_enD;
+	// wire	[3:0]	memwriteD, memread_enD;
 	wire	[4:0] 	alucontrolD;
 	wire			isMemDataReadSignedD;		
 	wire 	[3:0]   memInfo_we_bhwD;
@@ -147,7 +147,7 @@ module controller(
 		isLoadExceptionE,       // load addr except
 		isStoreExceptionE,      // store addr except
 		aluoverflowE,   // overflow exception
-		1'b0,  // 中断例外，这里根据ppt提示没有接
+		1'b0,  // 硬中断例外，这里根据ppt提示没有接
 		retainInstrExceptionE, // 保留指令例外
 		exceptionTypeE,
 		haveExceptionE,           // 异常信号
