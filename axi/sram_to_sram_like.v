@@ -32,7 +32,7 @@ module sram_to_sram_like(
     assign s_rdata = s_rdata_save;
     assign sl_addr = s_addr_save;
     assign sl_wdata = s_wdata_save;
-    always @(*) begin
+    always @(state) begin
         s_rdata_save = (~areset) ? 'b0 : 
                        (sl_data_ok) ? sl_rdata : s_rdata_save;          // 这个应该是Latch锁存器了，而不是flopper
     end

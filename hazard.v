@@ -94,11 +94,11 @@ module hazard(
 	assign flushF = 1'b0;				// 注意这里是不需要加exception的，因为有问题后，pcnext为32'bf00380(异常处理入口)，而不应该刷新
 	assign flushD = haveExceptionE | (isEretD & ~stallE);			// eret没有延迟槽，要刷掉，但前提是前面没有stall，不然Eret上不去
 	assign flushE = haveExceptionE | ((lwstallD | branchstallD | jumpstallD) & ~stallE);		// E阶段不停顿，就应该刷掉，防止D阶段的分支指令凑上来搞事，但E停止除外
-	assign flushM = haveExceptionE;			// E阶段的信号能检测到所有异常，一般是当前指令有问题，下一阶段MEM要刷掉，特殊情况是软中断，但经过观察，EPC是E阶段的，所以没问题
+	assign flushM = haveExceptionE & ~extStall;			// E阶段的信号能检测到所有异常，一般是当前指令有问题，下一阶段MEM要刷掉，特殊情况是软中断，但经过观察，EPC是E阶段的，所以没问题
 	assign flushW = 1'b0;
 	// ext
 	assign instInnerStallFlush = ((lwstallD | branchstallD | jumpstallD) & ~haveExceptionE) | isMulOrDivComputingE | ((lwstallD | branchstallD | jumpstallD) & ~flushD);
-	assign dataInnerStallFlush = isMulOrDivComputingE | flushM;
+	assign dataInnerStallFlush = isMulOrDivComputingE | haveExceptionE;
 endmodule
 
 

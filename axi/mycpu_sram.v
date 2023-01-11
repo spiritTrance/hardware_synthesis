@@ -1,7 +1,7 @@
 module mycpu_sram (
     input               clk, resetn,            // low active
     input   [5:0]       ext_int,
-
+    output              no_dcache,
     //instr
     output              inst_sram_en,
     output  [3:0]       inst_sram_wen    ,
@@ -66,7 +66,8 @@ module mycpu_sram (
         .inst_vaddr(inst_vaddr),
         .inst_paddr(inst_paddr),
         .data_vaddr(data_vaddr),
-        .data_paddr(data_paddr)
+        .data_paddr(data_paddr),
+        .no_dcache(no_dcache)
     );          // 虚实地址转换模块
 
     instdec instEx(

@@ -62,8 +62,8 @@ module aludec(
 				`OP_SLTIU:	alucontrol = `SIG_ALU_SLTU;
 				// branch and jump
 				`OP_JAL		:	alucontrol = `SIG_ALU_PC8;
-				`OP_BLTZAL	:	alucontrol = `SIG_ALU_PC8;
-				`OP_BGEZAL	:	alucontrol = `SIG_ALU_PC8;
+				`OP_BLTZAL	:	alucontrol = `SIG_ALU_PC8;	// bgezal implied
+				// `OP_BGEZAL	:	alucontrol = `SIG_ALU_PC8;
 				// load and store
 				`OP_LB 		:	alucontrol = `SIG_ALU_MEM;
 				`OP_LBU		:	alucontrol = `SIG_ALU_MEM;
