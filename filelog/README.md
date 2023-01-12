@@ -160,3 +160,19 @@ ERET没有延迟槽！！！刷掉pcF
 最后的一点在于软中断那里，写使能要根据stallM来写
 
 然后中间还改了很多，比较关键的是，前面的流水线stall了，后面的流水线大多数情况不能flush（其实这里搞的真的很头昏脑胀）
+
+## 2023/1/12
+
+axi阶段，vivado上不了板，报告是有组合逻辑环路，相当麻，verilator没报，但是vivado检测出来了。从报错信息除了组合逻辑环路根本得不到提示。只得自行梳理逻辑，首先从stall入手，这个因为都是组合逻辑描述，到处连线最容易出现环路。结果发现环路如下：
+
+```verilog
+sram_to_sram_like：stall
+
+hazard：instInnerStallFlush =  ((lwstallD | branchstallD | jumpstallD) ~stallD) | isMulOrDivComputingE | haveExceptionE; 
+	assign stallD = stallE | ((lwstallD | branchstallD | jumpstallD) & ~flushD);
+	assign stallE = stallM;
+	assign stallM = stallW;
+	assign stallW = extStall | isMulOrDivComputingE;
+```
+
+注意到extStall就是sram_to_sram_like的stall，而stall的变化又取决于instInnerFlush的变化，因此出现了组合环路，尝试删掉instInnerStallFlush后，组合逻辑环路报告消失，可以产生比特流上版了，可以可以
